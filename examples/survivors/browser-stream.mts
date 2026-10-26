@@ -372,7 +372,10 @@ export class BrowserStream {
     const index = mode.$ === "Dwell" ? mode.index : mode.$ === "Advice" && mode.received ? mode.recommendation : -1
     for (const button of document.querySelectorAll<HTMLButtonElement>("[data-choice]")) {
       button.disabled = true
-      button.classList.toggle("stream-recommendation", Number(button.dataset.choice) === index)
+      const selected = Number(button.dataset.choice) === index
+      button.classList.toggle("stream-recommendation", selected)
+      const recommendation = selected ? (mode.$ === "Dwell" ? "frozen" : "considering") : "none"
+      if (button.dataset.streamRecommendation !== recommendation) button.dataset.streamRecommendation = recommendation
     }
     for (const button of document.querySelectorAll<HTMLButtonElement>("#dialog [data-run],#banish"))
       button.disabled = true
