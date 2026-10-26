@@ -4,7 +4,9 @@ import type { Strategy, WorkerInput, WorkerOutput } from "./stream-strategy-type
 let strategy: Strategy | undefined
 const send = (message: WorkerOutput) => self.postMessage(message)
 self.addEventListener("message", (event: MessageEvent<WorkerInput>) => {
-  void handle(event.data).catch((error: unknown) => send({ kind: "failure", message: errorMessage(error) }))
+  void handle(event.data).catch((error: unknown) =>
+    send({ kind: "failure", message: errorMessage(error).slice(0, 500) })
+  )
 })
 async function handle(input: WorkerInput) {
   if (input.kind === "prepare") {
