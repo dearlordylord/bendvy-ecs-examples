@@ -654,3 +654,10 @@ footer {
 #stream-diagnostics { max-height:240px; overflow:auto; white-space:pre-wrap; font-size:10px }
 .stream-recommendation { outline:2px solid #e7c77e; box-shadow:0 0 24px #d6ae5e66; transform:translateY(-3px) }
 .stream-mode #joystick { display:none }
+
+#stream-compact { padding:2px 7px; font-size:14px; flex:none }
+#stream-controls.stream-compact { width:min(360px,calc(100vw - 32px)); padding:8px 12px }
+#stream-controls.stream-compact .stream-actions, #stream-controls.stream-compact .stream-module, #stream-controls.stream-compact details { display:none }
+@media (max-width:520px) {
+  #menu #tabs:has(a[href="./?stream=1"]) :is(button,a.menu-route) { grid-column:span 2 }
+}

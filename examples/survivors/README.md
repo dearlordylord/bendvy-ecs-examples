@@ -178,6 +178,8 @@ The click also enables browser audio. The stream uses the normal renderer, HUD,
 upgrade cards and adaptive music. Native headless and grid bots are unchanged.
 
 The controls provide pause/resume, stop, strategy reload and audio resume.
+Use the gear button for a compact capture view with status and intention; expand
+it to reach controls and diagnostics. **Player mode** returns to ordinary play.
 Upgrades wait 500 ms for advice and then display a fixed recommendation for at
 least 1500 ms before committing. Death/victory remains visible for 5 seconds and
 then starts another seeded run. The stream copies the selected player profile
@@ -249,6 +251,8 @@ Verify the pure production session decisions with:
 
 ```sh
 node examples/survivors/check-stream-session.mts
+node examples/survivors/check-stream-observation.mts
+node --test examples/survivors/stream-strategy-values.test.mts
 ```
 
 This runs Bend laws, literal scenarios and typechecked production mutations.

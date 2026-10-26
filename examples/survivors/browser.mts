@@ -240,6 +240,7 @@ function accept(packet: BendABI.Game.Packet | { $: "Failed"; error: string }) {
   if (packet.$ !== "Packet") throw Error("Invalid simulation response")
   const observed = Game.observe(packet.state)
   state = observed.state
+  stream?.observed(state)
   const old = frame
   frame = gameFrame(observed.observation)
   if (old?.phase === 0 && [1, 2].includes(frame.phase)) upgradeOpen = true

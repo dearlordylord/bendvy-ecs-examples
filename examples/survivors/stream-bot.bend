@@ -3,6 +3,10 @@ import game.bend as G
 import offline-policy.bend as P
 import offline-threats.bend as T
 import pickup-state.bend as Pickup
+import enemy-combat.bend as Enemy
+import enemy-spatial.bend as Space
+import projectile-state.bend as Shot
+import game-components.bend as C
 
 type View is Data: View{px:F32,py:F32,halfWidth:F32,halfHeight:F32}
 type Goal is Data: Goal{index:U32,kind:U32,x:F32,y:F32,reward:F32,score:F32}
@@ -19,6 +23,12 @@ def visible_geometry(geometry:G.SnapshotGeometry,view:View) -> Bool:
   match geometry view:
     case G.SnapshotGeometry{_,x,y,_,_} View{px,py,halfWidth,halfHeight}: Bool.and(F32.is_le(F32.abs((x - px : F32)),halfWidth),F32.is_le(F32.abs((y - py : F32)),halfHeight))
 def visible(row:G.Snapshot,view:View) -> Bool: visible_geometry(G.snapshot_geometry(row),view)
+def active(row:G.Snapshot) -> Bool:
+  match row:
+    case G.EnemySnapshot{Enemy.State{_,_,_,C.Vitals{hp,_},_}}: U32.is_gt(hp,0)
+    case G.ProjectileSnapshot{Shot.State{_,_,Shot.HostileShot{},C.ShotPayload{_,_,active},_}}: active
+    case G.PickupSnapshot{value}: Pickup.active(value)
+    case _: False{}
 def category(row:G.Snapshot) -> U32:
   match row:
     case G.EnemySnapshot{_}: 0
@@ -33,7 +43,7 @@ def seen(rows:List<&2,G.Snapshot>,+view:View,+kind:U32,fuel:U32,+acc:List<&2,G.S
     case _ 0: List.reverse(&2,G.Snapshot,acc)
     case Nil{} _: List.reverse(&2,G.Snapshot,acc)
     case Con{+row,+rest} +n:
-      P.branch(~List<&2,G.Snapshot>,Bool.and(U32.is_eq(category(row),kind),visible(row,view)),(_ => seen(rest,view,kind,(n - 1 : U32),row <> acc)),(_ => seen(rest,view,kind,n,acc)))
+      P.branch(~List<&2,G.Snapshot>,Bool.and(active(row),Bool.and(U32.is_eq(category(row),kind),visible(row,view))),(_ => seen(rest,view,kind,(n - 1 : U32),row <> acc)),(_ => seen(rest,view,kind,n,acc)))
 def known(rows:List<&2,G.Snapshot>,+view:View,fuel:U32,+acc:List<&2,G.Snapshot>) -> List<&2,G.Snapshot>:
   match rows fuel:
     case _ 0: acc
@@ -62,11 +72,21 @@ def selected(rows:List<&2,P.Choice>,index:U32,current:Maybe<&2,P.Choice>) -> May
 def choose(memory:Memory,index:U32) -> Memory:
   match memory:
     case Memory{P.Memory{current,lastPlan,lastHp,anchor,stuckSince,initialized,keys,+rows},pickups}: Memory{P.Memory{selected(rows,index,current),lastPlan,lastHp,anchor,stuckSince,initialized,keys,rows},pickups}
+def live_offers(+phase:U32,offers:List<&2,G.Offer>) -> List<&2,G.Offer>: Bool.pick(List<&2,G.Offer>,Bool.or(U32.is_eq(phase,1),U32.is_eq(phase,2)),offers,[])
+def threats(rows:List<&2,G.Snapshot>,acc:List<&2,T.Threat>) -> List<&2,T.Threat>:
+  match rows:
+    case []: acc
+    case G.EnemySnapshot{Enemy.State{Space.Spatial{x,y,_,radius},_,_,C.Vitals{_,_},_}} <> rest: threats(rest,T.Threat{x,y,radius,False{}} <> acc)
+    case G.ProjectileSnapshot{Shot.State{Space.Spatial{x,y,_,radius},_,Shot.HostileShot{},_,_}} <> rest: threats(rest,T.Threat{x,y,radius,True{}} <> acc)
+    case _ <> rest: threats(rest,acc)
+def direction(policy:P.Memory,+run:G.Run,+snapshots:List<&2,G.Snapshot>) -> F32 & F32:
+  match policy:
+    case P.Memory{current,_,_,_,_,_,_,_}: P.steer(run,threats(snapshots,[]),G.enemy_observations(snapshots),P.target(current))
 def observation(+run:G.Run,+offers:List<&2,G.Offer>,policy:P.Memory,visible:List<&2,G.Snapshot>,truncated:Bool) -> Observation:
-  Observation{G.run_tick(run),G.run_phase(run),G.run_px(run),G.run_py(run),G.run_hp(run),G.run_maxHp(run),G.run_level(run),G.run_weapons(run),G.run_passives(run),offers,candidates(policy),P.threats(visible),P.upgrade(run,offers),truncated}
+  Observation{G.run_tick(run),G.run_phase(run),G.run_px(run),G.run_py(run),G.run_hp(run),G.run_maxHp(run),G.run_level(run),G.run_weapons(run),G.run_passives(run),live_offers(G.run_phase(run),offers),candidates(policy),threats(visible,[]),P.upgrade(run,offers),truncated}
 def planned(memory:P.Memory,+run:G.Run,offers:List<&2,G.Offer>,+visible:List<&2,G.Snapshot>,+knowledge:List<&2,G.Snapshot>,truncated:Bool,view:View) -> Planned:
-  P.bind(~P.Memory,~(F32 & F32),~Planned,P.movement(memory,run,List.append(&2,G.Snapshot,visible,known(knowledge,view,128,[]))),(+policy => direction =>
-    P.bind(~F32,~F32,~Planned,direction,(dx => dy => Planned{Memory{policy,knowledge},observation(run,offers,policy,visible,truncated),dx,dy}))
+  P.bind(~P.Memory,~(F32 & F32),~Planned,P.movement(memory,run,List.append(&2,G.Snapshot,visible,known(knowledge,view,128,[]))),(+policy => _ =>
+    P.bind(~F32,~F32,~Planned,direction(policy,run,visible),(dx => dy => Planned{Memory{policy,knowledge},observation(run,offers,policy,visible,truncated),dx,dy}))
   ))
 def plan(memory:Memory,+run:G.Run,offers:List<&2,G.Offer>,+snapshots:List<&2,G.Snapshot>,width:F32,height:F32) -> Planned:
   match memory:
@@ -78,4 +98,4 @@ def plan(memory:Memory,+run:G.Run,offers:List<&2,G.Offer>,+snapshots:List<&2,G.S
       +visible=List.append(&2,G.Snapshot,enemies,List.append(&2,G.Snapshot,shots,items))
       +fresh=pickups(visible,128,[])
       +knowledge=known(old,view,(128 - U32.from_nat(List.length(&2,G.Snapshot,fresh)) : U32),fresh)
-      planned(policy,run,offers,visible,knowledge,Bool.or(Nat.is_ge(List.length(&2,G.Snapshot,enemies),128n),Bool.or(Nat.is_ge(List.length(&2,G.Snapshot,shots),64n),Nat.is_ge(List.length(&2,G.Snapshot,items),128n))),view)
+      planned(policy,run,offers,visible,knowledge,Bool.or(Nat.is_ge(List.length(&2,G.Snapshot,enemies),128n),Bool.or(Nat.is_ge(List.length(&2,G.Snapshot,shots),64n),Bool.or(Nat.is_ge(List.length(&2,G.Snapshot,items),128n),Nat.is_ge(List.length(&2,G.Snapshot,knowledge),128n)))),view)

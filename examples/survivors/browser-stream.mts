@@ -24,6 +24,11 @@ function duration(name: string, fallback: number) {
   if (!Number.isSafeInteger(value) || value < 0 || value > 60000) throw Error(`Invalid stream ${name}`)
   return value
 }
+function streamSeed() {
+  const value = Number(query.get("seed") ?? 982451653)
+  if (!Number.isSafeInteger(value) || value < 0 || value > 0xffffffff) throw Error("Invalid stream seed")
+  return value
+}
 export class BrowserStream {
   private machine = Session.fresh(duration("advice", 500), duration("dwell", 1500), duration("between", 5000))
   private memory = Bot.initial()
@@ -34,9 +39,10 @@ export class BrowserStream {
   private serial = 0
   private session = 0
   private run = 0
-  private seed = Number(query.get("seed") ?? 982451653) >>> 0
+  private seed = streamSeed()
   private nextAdvice = 0
   private latest = 0
+  private actualPhase = 0
   private frames = 0
   private commits = 0
   private lastDraw = 0
@@ -61,7 +67,7 @@ export class BrowserStream {
     this.hooks = hooks
     const container = document.createElement("section")
     container.id = "stream-controls"
-    container.innerHTML = `<div class="stream-heading"><strong>✦ Stream session</strong><span id="stream-status">Ready</span></div><div class="stream-actions"><button id="stream-start">Start stream</button><button id="stream-pause" disabled>Pause</button><button id="stream-stop" disabled>Stop</button><button id="stream-reload">Reload strategy</button><button id="stream-audio">Resume audio</button></div><label class="stream-module">Strategy manifest <input id="stream-strategy" value="" spellcheck="false"></label><p id="stream-intention">Ready to observe</p><p id="stream-error" role="alert" hidden></p><details><summary>Diagnostics</summary><pre id="stream-diagnostics"></pre></details>`
+    container.innerHTML = `<div class="stream-heading"><strong>✦ Stream session</strong><span id="stream-status">Ready</span><button id="stream-compact" aria-label="Toggle stream controls" aria-expanded="true">⚙</button></div><div class="stream-actions"><button id="stream-start">Start stream</button><button id="stream-pause" disabled>Pause</button><button id="stream-stop" disabled>Stop</button><button id="stream-reload">Reload strategy</button><button id="stream-audio">Resume audio</button><a href="./">Player mode</a></div><label class="stream-module">Strategy manifest <input id="stream-strategy" value="" spellcheck="false"></label><p id="stream-intention">Ready to observe</p><p id="stream-error" role="alert" hidden></p><details><summary>Diagnostics</summary><pre id="stream-diagnostics"></pre></details>`
     document.body.append(container)
     const input = container.querySelector<HTMLInputElement>("#stream-strategy")
     if (input) input.value = query.get("strategy") ?? "./stream-strategy.json"
@@ -78,6 +84,10 @@ export class BrowserStream {
       else if (id === "stream-reload" && this.observation)
         void this.strategies?.reload(this.manifest(), this.observation)
       else if (id === "stream-audio") this.hooks.unlock()
+      else if (id === "stream-compact") {
+        const compact = container.classList.toggle("stream-compact")
+        container.querySelector("#stream-compact")?.setAttribute("aria-expanded", String(!compact))
+      }
     })
     this.draw()
   }
@@ -171,13 +181,19 @@ export class BrowserStream {
         now: this.now()
       })
       if (accepted) this.memory = Bot.choose(this.memory, intention.index)
-    } else accepted = this.apply({ $: "MovementReply", identity, index: 0, count: 1, now: this.now() })
+    } else if (this.machine.mode.$ === "Advice")
+      accepted = this.apply({ $: "Reply", identity, index: this.machine.mode.fallback, now: this.now() })
+    else accepted = this.apply({ $: "MovementReply", identity, index: 0, count: 1, now: this.now() })
     this.log(accepted ? "advice-accepted" : "advice-rejected", result.label)
     if (accepted) this.intention = result.label || "Follow the Bend policy"
     return accepted
   }
   private viewport() {
     return document.querySelector<HTMLCanvasElement>("#game") ?? { width: 1024, height: 640 }
+  }
+  observed(state: BendABI.Game.State) {
+    this.latest = state.run.session.tick
+    this.actualPhase = state.run.session.phase
   }
   movement(state: BendABI.Game.State) {
     const planned = Bot.plan(
@@ -214,6 +230,7 @@ export class BrowserStream {
     if (this.active && state && !this.starting) {
       this.latest = state.run.session.tick
       const phase = state.run.session.phase
+      this.actualPhase = phase
       const offers = rows(state.offers)
       const signature = `${phase}:${offers.map((offer) => `${offer.kind},${offer.id},${offer.level}`).join(";")}`
       if ((phase === 1 || phase === 2) && signature !== this.signature) {
@@ -250,6 +267,13 @@ export class BrowserStream {
       this.apply({ $: "Frame", now: Math.floor(now) })
       if (this.observation) {
         this.strategies?.recover(this.manifest(), this.observation)
+        if (
+          !this.machine.paused &&
+          this.machine.mode.$ === "Advice" &&
+          !this.machine.mode.received &&
+          !this.strategies?.busy
+        )
+          this.request()
         if (this.canMove && now >= this.nextAdvice && !this.strategies?.busy) {
           this.apply({ $: "Request", decision: ++this.serial, phase, now: Math.floor(now) })
           this.request()
@@ -306,7 +330,7 @@ export class BrowserStream {
       session: this.session,
       run: this.run,
       tick: this.latest,
-      phase: this.machine.identity.phase,
+      phase: this.actualPhase,
       mode: this.machine.mode.$,
       paused: this.machine.paused,
       frames: this.frames,

@@ -3,18 +3,25 @@ import type { Decision } from "./stream-strategy-types.mts"
 
 export function boundedMemory(value: unknown): unknown {
   let remaining = 8192
+  let bytes = 65536
   function visit(item: unknown, depth: number): void {
-    if (--remaining < 0 || depth > 12) throw Error("Strategy memory exceeds 8192 values or depth 12")
+    bytes -= 8
+    if (--remaining < 0 || depth > 12 || bytes < 0) throw Error("Strategy memory exceeds 8192 values or depth 12")
     if (item === null || item === undefined || typeof item === "boolean") return
     if (typeof item === "number" && Number.isFinite(item)) return
-    if (typeof item === "string" && item.length <= 4096) return
+    if (typeof item === "string" && item.length <= 4096) {
+      bytes -= new TextEncoder().encode(item).byteLength
+      if (bytes < 0) throw Error("Strategy memory exceeds 64 KiB")
+      return
+    }
     if (Array.isArray(item)) {
       for (const child of item) visit(child, depth + 1)
       return
     }
     if (typeof item === "object" && Object.getPrototypeOf(item) === Object.prototype) {
       for (const [key, child] of Object.entries(item)) {
-        if (key.length > 256) throw Error("Strategy memory key is too long")
+        bytes -= new TextEncoder().encode(key).byteLength
+        if (key.length > 256 || bytes < 0) throw Error("Strategy memory key is too long")
         visit(child, depth + 1)
       }
       return
@@ -23,7 +30,8 @@ export function boundedMemory(value: unknown): unknown {
   }
   visit(value, 0)
   const result: unknown = structuredClone(value)
-  if ((JSON.stringify(result) ?? "").length > 65536) throw Error("Strategy memory exceeds 64 KiB")
+  if (new TextEncoder().encode(JSON.stringify(result) ?? "").byteLength > 65536)
+    throw Error("Strategy memory exceeds 64 KiB")
   return result
 }
 function index(value: unknown): number {

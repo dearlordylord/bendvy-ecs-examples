@@ -41,6 +41,7 @@ export class StreamStrategies {
   private candidate: Generation | undefined
   private candidateTimer: ReturnType<typeof setTimeout> | undefined
   private pending: Pending | undefined
+  private queued: { identity: RequestIdentity; observation: BendABI.StreamBot.Observation } | undefined
   private generation = 0
   private fetchController: AbortController | undefined
   private alive = true
@@ -163,8 +164,12 @@ export class StreamStrategies {
         const admitted = this.pending.admitted
         clearTimeout(this.pending.timer)
         this.pending = undefined
-        if (admitted && this.events.decision(expected, result)) this.memory = result.memory
-        else this.events.log("obsolete-advice", "Decision completed after admission was invalidated")
+        if (admitted) {
+          if (this.events.decision(expected, result)) this.memory = result.memory
+        } else this.events.log("obsolete-advice", "Decision completed after admission was invalidated")
+        const queued = this.queued
+        this.queued = undefined
+        if (queued) this.request(queued.identity, queued.observation)
       }
     } catch (error) {
       this.failed(source, error)
@@ -188,7 +193,11 @@ export class StreamStrategies {
     this.events.log("activated", this.revision)
   }
   request(identity: RequestIdentity, observation: BendABI.StreamBot.Observation) {
-    if (!this.alive || !this.active || this.pending) return
+    if (!this.alive || !this.active) return
+    if (this.pending) {
+      this.queued = { identity, observation }
+      return
+    }
     const active = this.active
     this.pending = {
       identity,
@@ -199,9 +208,11 @@ export class StreamStrategies {
     active.worker.postMessage(message)
   }
   invalidate() {
+    this.queued = undefined
     if (this.pending) this.pending.admitted = false
   }
   private retireExecution() {
+    this.queued = undefined
     clearTimeout(this.pending?.timer)
     this.pending = undefined
   }
