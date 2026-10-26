@@ -33,11 +33,15 @@ if (checked.status !== 0) throw Error("Strategy type checking failed; previous m
 const result = await build({
   entryPoints: [entry],
   bundle: true,
+  metafile: true,
+  logOverride: { "unsupported-dynamic-import": "error" },
   write: false,
   format: "esm",
   platform: "browser",
   target: "es2023"
 })
+if (Object.values(result.metafile.outputs).some((output) => output.imports.length > 0))
+  throw Error("Strategy must have a self-contained bundled dependency graph; unbundled imports are unsupported")
 const output = result.outputFiles?.[0]
 if (!output) throw Error("No strategy bundle was produced")
 const revision = createHash("sha256").update(output.contents).digest("hex")

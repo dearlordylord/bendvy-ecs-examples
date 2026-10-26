@@ -211,7 +211,9 @@ node tools/survivors-bot/build-stream-strategy.mts \
   examples/survivors/dist/web/stream-strategy.json
 ```
 
-This command type-checks and bundles the complete local dependency graph, writes
+Strategies must use a self-contained local module graph. Nonliteral dynamic
+imports and unresolved/external imports (including remote URLs) are rejected.
+This command type-checks and bundles the complete supported dependency graph, writes
 an immutable SHA-256-named JS module, then atomically replaces its manifest.
 Click **Reload strategy** in the running page. The world continues while the
 replacement loads and runs a bounded smoke decision. A broken candidate retains
@@ -258,6 +260,7 @@ Verify the pure production session decisions with:
 node examples/survivors/check-stream-session.mts
 node examples/survivors/check-stream-observation.mts
 node --test examples/survivors/stream-strategy-values.test.mts
+node --test tools/survivors-bot/build-stream-strategy.test.mts
 ```
 
 This runs Bend laws, literal scenarios and typechecked production mutations.
