@@ -23,6 +23,8 @@ example_emit "$app_dir/menu-catalog.bend" "$app_dir/dist/menu-catalog.mjs"
 example_emit "$app_dir/menu-progression.bend" "$app_dir/dist/menu-progression.mjs"
 "$NODE" "$app_dir/generate-menu-content.mts"
 example_emit "$app_dir/game.bend" "$staging_dir/public/dist/game.mjs"
+example_emit "$app_dir/stream-session.bend" "$staging_dir/public/dist/stream-session.mjs"
+example_emit "$app_dir/stream-bot.bend" "$staging_dir/public/dist/stream-bot.mjs"
 example_emit "$app_dir/audio-events.bend" "$staging_dir/public/dist/audio-events.mjs"
 cp "$app_dir/dist/menu-progression.mjs" "$staging_dir/public/dist/"
 example_emit "$app_dir/coop-core.bend" "$staging_dir/public/dist/coop-core.mjs"
@@ -37,6 +39,7 @@ for module in coop-finish coop-lobby coop-network coop-client-delivery coop-snap
 done
 bash "$example_repo/tools/iroh-transport/build.sh" "$staging_dir/public/iroh"
 python3 "$example_repo/scripts/generate-bend-types.py"
+"$NODE" "$example_repo/tools/survivors-bot/build-stream-strategy.mts" "$app_dir/stream-strategy.mts" "$staging_dir/public/stream-strategy.json"
 "$NODE" "$example_repo/node_modules/typescript/bin/tsc" -p "$app_dir/tsconfig.browser.json" --outDir "$staging_dir/public"
 "$example_repo/node_modules/.bin/esbuild" "$app_dir/cbor.mts" --bundle --format=esm --platform=browser --outfile="$staging_dir/public/cbor.mjs"
 for asset in style.css menu-a.css menu-moon.css coop.css; do

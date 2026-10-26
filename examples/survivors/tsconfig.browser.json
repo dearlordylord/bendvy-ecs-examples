@@ -13,7 +13,8 @@
     "coop-worker.mts",
     "../../.typescript/bend.d.ts",
     "../../types/browser.d.ts",
-    "entry-scripts.mts"
+    "entry-scripts.mts",
+    "stream-strategy-worker.mts"
   ],
   "exclude": [
     "dist",
