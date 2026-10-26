@@ -569,6 +569,7 @@ document.addEventListener("click", (event) => {
       phase()
       shownPhase = frame.phase
     } else if (b.dataset.run) {
+      if (streamMode) return
       if (b.dataset.run === "skip") upgradeOpen = false
       if (b.dataset.run !== "reroll" && b.dataset.run !== "skip") throw new Error("Unknown run action")
       consume(b.dataset.run)
@@ -576,6 +577,7 @@ document.addEventListener("click", (event) => {
       phase()
       shownPhase = frame.phase
     } else if (b.id === "banish") {
+      if (streamMode) return
       banishing = !banishing
       b.textContent = banishing ? "Choose an ability to banish" : "Banish an offer…"
     } else if (b.id === "start" || b.id === "start-top" || b.id === "restart") {
@@ -624,7 +626,7 @@ window.addEventListener("keydown", (e) => {
     if (!e.repeat && !upgradeOpen) pause()
     return
   }
-  if (!$("#overlay").hidden && e.code === "Tab") {
+  if (!streamMode && !$("#overlay").hidden && e.code === "Tab") {
     const controls = [
       ...$("#dialog").querySelectorAll<HTMLElement>("button:not(:disabled),input:not(:disabled),[tabindex='0']")
     ]

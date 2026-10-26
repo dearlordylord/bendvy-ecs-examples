@@ -32,7 +32,28 @@ const pickup: BendABI.Game.Snapshot = {
     payload: { $: "Payload", generation: 1, active: true, item: { $: "Xp", amount: 10, accumulator: false } }
   }
 }
-const crowded = list([...Array.from({ length: 1000 }, () => nearEnemy), pickup])
+const shot = rows(state.snapshots).find((row) => row.$ === "ProjectileSnapshot")
+assert.ok(shot && shot.$ === "ProjectileSnapshot")
+const hostile: BendABI.Game.Snapshot = {
+  ...shot,
+  projectile: {
+    ...shot.projectile,
+    spatial: { ...shot.projectile.spatial, x: view.px + 50, y: view.py, radius: 4 },
+    side: { $: "HostileShot" },
+    payload: { ...shot.projectile.payload, active: true },
+    trajectory: { ...shot.projectile.trajectory, vx: 1, life: 300 }
+  }
+}
+const inactive: BendABI.Game.Snapshot = {
+  ...nearEnemy,
+  enemy: { ...nearEnemy.enemy, vitals: { ...nearEnemy.enemy.vitals, health: 0 } }
+}
+const crowded = list([
+  ...Array.from({ length: 500 }, () => inactive),
+  ...Array.from({ length: 1000 }, () => nearEnemy),
+  pickup,
+  hostile
+])
 assert.equal(rows(Bot.seen(crowded, view, 0, 128, list([]))).length, 128)
 assert.equal(rows(Bot.seen(crowded, view, 2, 128, list([]))).length, 1)
 assert.equal(rows(Bot.known(list([pickup]), view, 128, list([]))).length, 0)
@@ -40,6 +61,8 @@ const away = { ...view, px: view.px + 1000 }
 assert.equal(rows(Bot.known(list([pickup]), away, 128, list([]))).length, 1)
 const plan = Bot.plan(Bot.initial(), run, state.offers, crowded, 1024, 640)
 assert.ok(rows(plan.observation.threats).length <= 192)
+assert.equal(rows(plan.observation.threats).filter((threat) => threat.hostile).length, 1)
+assert.equal(rows(plan.observation.offers).length, 0)
 assert.ok(rows(plan.observation.goals).length <= 8)
 assert.equal(rows(plan.memory.pickups).length, 1)
 assert.equal("world" in plan.observation, false)
