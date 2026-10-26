@@ -1,0 +1,209 @@
+export function installStreamObservers() {
+  const liveBlobs = new Set<string>()
+  const createObjectURL = URL.createObjectURL.bind(URL)
+  const revokeObjectURL = URL.revokeObjectURL.bind(URL)
+  let createdBlobs = 0
+  URL.createObjectURL = (object) => {
+    const url = createObjectURL(object)
+    liveBlobs.add(url)
+    document.documentElement.dataset.checkBlobLive = String(liveBlobs.size)
+    document.documentElement.dataset.checkBlobCreated = String(++createdBlobs)
+    return url
+  }
+  URL.revokeObjectURL = (url) => {
+    revokeObjectURL(url)
+    liveBlobs.delete(url)
+    document.documentElement.dataset.checkBlobLive = String(liveBlobs.size)
+  }
+  const NativeWorker = globalThis.Worker
+  globalThis.Worker = class extends NativeWorker {
+    constructor(url: string | URL, options?: WorkerOptions) {
+      if (document.documentElement.dataset.checkWorkerConstructorFailure === "armed") {
+        document.documentElement.dataset.checkWorkerConstructorFailure = "observed"
+        throw new Error("acceptance Worker construction failure")
+      }
+      super(url, options)
+      this.addEventListener("message", (event: MessageEvent<unknown>) => {
+        const value = event.data
+        if (
+          value !== null &&
+          typeof value === "object" &&
+          "kind" in value &&
+          value.kind === "failure" &&
+          "message" in value &&
+          typeof value.message === "string"
+        ) {
+          const previous = Number(document.documentElement.dataset.checkWorkerFailureLength ?? 0)
+          document.documentElement.dataset.checkWorkerFailureLength = String(Math.max(previous, value.message.length))
+        }
+      })
+    }
+    override postMessage(message: unknown, options?: Transferable[] | StructuredSerializeOptions) {
+      if (
+        message !== null &&
+        typeof message === "object" &&
+        "kind" in message &&
+        message.kind === "decide" &&
+        "observation" in message
+      ) {
+        const observation = message.observation
+        if (
+          observation !== null &&
+          typeof observation === "object" &&
+          "phase" in observation &&
+          (observation.phase === 1 || observation.phase === 2) &&
+          "fallback" in observation &&
+          typeof observation.fallback === "number" &&
+          "tick" in observation &&
+          typeof observation.tick === "number" &&
+          "offers" in observation
+        ) {
+          let offers = observation.offers,
+            count = 0
+          while (
+            offers !== null &&
+            typeof offers === "object" &&
+            "$" in offers &&
+            offers.$ === "Con" &&
+            "tail" in offers &&
+            count < 16
+          ) {
+            count++
+            offers = offers.tail
+          }
+          document.documentElement.dataset.checkUpgradeFallback = String(observation.fallback)
+          document.documentElement.dataset.checkUpgradeOfferCount = String(count)
+          document.documentElement.dataset.checkUpgradeTick = String(observation.tick)
+          document.documentElement.dataset.checkUpgradeSentAt = String(performance.now())
+          if ("identity" in message)
+            document.documentElement.dataset.checkUpgradeIdentity = JSON.stringify(message.identity)
+        }
+      }
+      if (Array.isArray(options)) super.postMessage(message, options)
+      else super.postMessage(message, options)
+    }
+  }
+  const Original = globalThis.AudioContext
+  if (!Original) return
+  let nodes = 0
+  let contexts = 0
+  let tappedMaster = false
+  globalThis.AudioContext = class extends Original {
+    constructor(options?: AudioContextOptions) {
+      super(options)
+      document.documentElement.dataset.checkAudioContexts = String(++contexts)
+      this.addEventListener("statechange", () => {
+        document.documentElement.dataset.checkAudioState = this.state
+      })
+    }
+    override createGain() {
+      const gain = super.createGain()
+      if (tappedMaster) return gain
+      const connect = gain.connect.bind(gain)
+      Object.defineProperty(gain, "connect", {
+        value: (destination: AudioNode | AudioParam, output?: number, input?: number) => {
+          if (destination instanceof AudioNode) {
+            if (!tappedMaster && destination === this.destination) {
+              tappedMaster = true
+              const analyser = this.createAnalyser()
+              analyser.fftSize = 256
+              connect(analyser)
+              const samples = new Float32Array(256)
+              const recent: { at: number; peak: number }[] = []
+              let observedPeak = 0
+              setInterval(() => {
+                analyser.getFloatTimeDomainData(samples)
+                const peak = samples.reduce((maximum, value) => Math.max(maximum, Math.abs(value)), 0)
+                const now = performance.now()
+                observedPeak = Math.max(observedPeak, peak)
+                recent.push({ at: now, peak })
+                while (recent[0] && recent[0].at < now - 1000) recent.shift()
+                document.documentElement.dataset.checkAudioPcmPeak = String(observedPeak)
+                document.documentElement.dataset.checkAudioRecentPcmPeak = String(
+                  Math.max(0, ...recent.map((sample) => sample.peak))
+                )
+              }, 100)
+            }
+            return connect(destination, output, input)
+          }
+          return connect(destination, output)
+        }
+      })
+      return gain
+    }
+    override createOscillator() {
+      document.documentElement.dataset.checkAudioNodes = String(++nodes)
+      return super.createOscillator()
+    }
+    override createBufferSource() {
+      document.documentElement.dataset.checkAudioNodes = String(++nodes)
+      return super.createBufferSource()
+    }
+  }
+  type Span = {
+    index: string
+    startedAt: number
+    endedAt: number
+    activeMs: number
+    frozenAt: number | null
+    frozenActiveMs: number
+  }
+  let current:
+    | {
+        element: Element
+        index: string
+        startedAt: number
+        at: number
+        activeMs: number
+        frozenAt: number | null
+        frozenActiveMs: number
+        paused: boolean
+        frozen: boolean
+      }
+    | undefined
+  const completed: Span[] = []
+  const observer = new MutationObserver(() => {
+    const button = document.querySelector<HTMLButtonElement>("#dialog .stream-recommendation")
+    const selected = button && !button.closest<HTMLElement>("#overlay")?.hidden ? button : null
+    const paused = document.querySelector("#stream-pause")?.textContent === "Resume"
+    const frozen = selected?.dataset.streamRecommendation === "frozen"
+    const now = performance.now()
+    if (current && (current.element !== selected || current.paused !== paused || current.frozen !== frozen)) {
+      if (!current.paused) {
+        current.activeMs += now - current.at
+        if (current.frozen) current.frozenActiveMs += now - current.at
+      }
+      current.at = now
+      if (current.element !== selected) {
+        completed.push({
+          index: current.index,
+          startedAt: current.startedAt,
+          endedAt: now,
+          activeMs: current.activeMs,
+          frozenAt: current.frozenAt,
+          frozenActiveMs: current.frozenActiveMs
+        })
+        if (completed.length > 16) completed.shift()
+        document.documentElement.dataset.checkRecommendationSpans = JSON.stringify(completed)
+        current = undefined
+      } else {
+        current.paused = paused
+        current.frozen = frozen
+        if (frozen && current.frozenAt === null) current.frozenAt = now
+      }
+    }
+    if (!current && selected)
+      current = {
+        element: selected,
+        index: selected.dataset.choice ?? "",
+        startedAt: now,
+        at: now,
+        activeMs: 0,
+        frozenAt: frozen ? now : null,
+        frozenActiveMs: 0,
+        paused,
+        frozen
+      }
+  })
+  observer.observe(document, { subtree: true, attributes: true, childList: true, characterData: true })
+}
