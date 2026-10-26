@@ -198,6 +198,8 @@ short `label`. The generated `BendABI.StreamBot.Observation` and
 `BendABI.StreamBot.Intention` types are authoritative. `stream-strategy-types.mts`
 exports the author-facing `Strategy` type. Intentions are `GoalChoice` or
 `UpgradeChoice` with a legal index, or `Default` for the Bend policy.
+Goal kinds reuse the Bend policy codes: XP `2`, chest `5`, relic `9`, and cardinal
+exploration `12` through `15`. Goal indices belong to the current request only.
 Observations contain linked Bend lists, legal offers, bounded candidate goals,
 visible threats and player/build state. They never contain the ECS world.
 
