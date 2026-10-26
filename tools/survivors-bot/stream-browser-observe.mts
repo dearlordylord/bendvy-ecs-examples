@@ -92,6 +92,11 @@ export function installStreamObservers() {
     constructor(options?: AudioContextOptions) {
       super(options)
       document.documentElement.dataset.checkAudioContexts = String(++contexts)
+      document.addEventListener("stream-check-suspend-audio", () => {
+        void this.suspend().catch((error: unknown) => {
+          document.documentElement.dataset.checkAudioSuspendError = String(error)
+        })
+      })
       this.addEventListener("statechange", () => {
         document.documentElement.dataset.checkAudioState = this.state
       })

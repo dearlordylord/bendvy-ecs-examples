@@ -44,6 +44,19 @@ browser/runtime error. The report preserves completed cases
 and the failure. Browser results complement Bend laws and mutation checks; they
 are not a proof of all possible event schedules.
 
+## Focused audio and controls check
+
+Run `--audio-only` with either browser or `--browser both` for the compact
+controls, actual AudioContext suspension, suspended status, public Resume audio,
+and Settings sound checkbox cases. Suspension invokes the captured native context;
+it does not fake its state. The suspended rolling PCM window must become silent
+before resuming, so cached pre-suspension samples cannot satisfy recovery.
+Settings are changed through the normal menu between
+runs because the running view has no sound checkbox. Muted play must produce
+silent master PCM; unmuted play and audio resume must recover nonzero PCM while
+reusing one context. This check changes the ordinary sound preference through its
+supported public control and verifies bot play preserves the resulting profile.
+
 ## Foreground soak
 
 Run a separate long session after the short acceptance checks pass:

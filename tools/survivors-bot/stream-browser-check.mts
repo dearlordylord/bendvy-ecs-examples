@@ -32,6 +32,8 @@ assert(["chromium", "webkit", "both"].includes(selectedBrowser), "--browser must
 const soakHours = Number(option("--soak-hours", "0"))
 assert(Number.isFinite(soakHours) && soakHours >= 0, "--soak-hours must be a nonnegative finite number")
 const soakOnly = args.includes("--soak-only")
+const audioOnly = args.includes("--audio-only")
+assert(!audioOnly || (!soakOnly && soakHours === 0), "--audio-only cannot be combined with soak modes")
 const headed = args.includes("--headed")
 assert(
   soakHours < 24 || (headed && selectedBrowser === "chromium"),
@@ -214,7 +216,69 @@ async function runBrowser(kind: BrowserType) {
       await page.locator("#stream-strategy").fill(fixture.manifest)
       await page.locator("#stream-reload").click()
       await until(page, (d) => d.revision.includes(initialHash.slice(0, 12)))
-      if (!soakOnly) {
+      if (audioOnly) {
+        await scenario(browserName, "public compact controls retain stream status", async () => {
+          await page.locator("#stream-compact").click()
+          assert.equal(await page.locator("#stream-compact").getAttribute("aria-expanded"), "false")
+          assert(await page.locator("#stream-status").isVisible())
+          assert(await page.locator("#stream-intention").isVisible())
+          assert.equal(await page.locator("#stream-pause").isVisible(), false)
+          await page.locator("#stream-compact").click()
+          assert.equal(await page.locator("#stream-compact").getAttribute("aria-expanded"), "true")
+          assert(await page.locator("#stream-pause").isVisible())
+          await page.locator("#stream-controls summary").click()
+          assert(await page.locator("#stream-diagnostics").isVisible())
+          const expanded = await diagnostics(page)
+          await page.locator("#stream-controls summary").click()
+          return { expanded, status: await page.locator("#stream-status").innerText() }
+        })
+        await scenario(browserName, "native audio suspension and public recovery", async () => {
+          await page.waitForFunction(() => Number(document.documentElement.dataset.checkAudioRecentPcmPeak) > 0.00001)
+          await page.evaluate(() => document.dispatchEvent(new Event("stream-check-suspend-audio")))
+          await page.waitForFunction(() =>
+            document.querySelector("#stream-status")?.textContent?.includes("audio suspended")
+          )
+          const suspended = await page.locator("#stream-status").innerText()
+          assert.equal(await page.evaluate(() => document.documentElement.dataset.checkAudioState), "suspended")
+          await page.waitForTimeout(1200)
+          const suspendedPcm = Number(
+            await page.evaluate(() => document.documentElement.dataset.checkAudioRecentPcmPeak)
+          )
+          assert(suspendedPcm < 0.00001, "Suspended audio must clear the actual rolling PCM window before recovery")
+          await page.locator("#stream-audio").click()
+          await page.waitForFunction(
+            () =>
+              document.querySelector("#stream-status")?.textContent?.includes("audio running") &&
+              Number(document.documentElement.dataset.checkAudioRecentPcmPeak) > 0.00001
+          )
+          assert.equal(await page.evaluate(() => document.documentElement.dataset.checkAudioContexts), "1")
+          assert.equal(await page.evaluate(() => document.documentElement.dataset.checkAudioSuspendError), undefined)
+          return { suspended, suspendedPcm, resumed: await page.locator("#stream-status").innerText() }
+        })
+        await scenario(browserName, "public Settings mute and unmute", async () => {
+          await page.locator("#stream-stop").click()
+          await page.locator('#tabs [data-tab="settings"]').click()
+          await page.locator("#sound").uncheck()
+          await page.locator("#stream-start").click()
+          await until(page, (d) => d.tick > 60)
+          await page.waitForTimeout(2200)
+          const muted = Number(await page.evaluate(() => document.documentElement.dataset.checkAudioRecentPcmPeak))
+          assert(muted < 0.00001, "Public mute must silence actual master PCM")
+          await page.locator("#stream-stop").click()
+          await page.locator('#tabs [data-tab="settings"]').click()
+          await page.locator("#sound").check()
+          baselineProfile = await page.evaluate((key) => localStorage.getItem(key), profileKey)
+          await page.locator("#stream-start").click()
+          await page.waitForFunction(() => Number(document.documentElement.dataset.checkAudioRecentPcmPeak) > 0.00001)
+          assert.equal(await page.evaluate(() => document.documentElement.dataset.checkAudioContexts), "1")
+          return {
+            muted,
+            unmuted: Number(await page.evaluate(() => document.documentElement.dataset.checkAudioRecentPcmPeak)),
+            contexts: await page.evaluate(() => document.documentElement.dataset.checkAudioContexts)
+          }
+        })
+      }
+      if (!soakOnly && !audioOnly) {
         await scenario(browserName, "real audio context and scheduled sound", async () => {
           await page.waitForFunction(() => Number(document.documentElement.dataset.checkAudioNodes) > 0)
           const audio = await page.evaluate(() => ({
@@ -886,7 +950,7 @@ async function runBrowser(kind: BrowserType) {
         })
         await report()
       }
-      if (!soakOnly) {
+      if (!soakOnly && !audioOnly) {
         await scenario(browserName, "ordinary browser player regression", async () => {
           await page.locator("#stream-stop").click()
           assert.equal(await page.evaluate((key) => localStorage.getItem(key), profileKey), baselineProfile)
