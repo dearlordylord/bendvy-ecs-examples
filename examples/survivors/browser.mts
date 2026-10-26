@@ -726,6 +726,11 @@ prepareRuntime().catch(() => {
 
 if (streamMode) {
   document.body.classList.add("stream-mode")
+  const launchButtons = [...document.querySelectorAll<HTMLButtonElement>("#start,#start-top")]
+  launchButtons.forEach((button) => {
+    button.disabled = true
+  })
+  $("#engineStatus").textContent = "Preparing stream…"
   import("./browser-stream.mts")
     .then(({ BrowserStream }) => {
       stream = new BrowserStream({
@@ -751,6 +756,10 @@ if (streamMode) {
         unlock: () => audio.unlock(),
         audioStop: () => audio.stop()
       })
+      launchButtons.forEach((button) => {
+        button.disabled = false
+      })
+      $("#engineStatus").textContent = ""
     })
     .catch(fail)
 }
