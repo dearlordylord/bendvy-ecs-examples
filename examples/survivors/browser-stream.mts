@@ -1,7 +1,7 @@
 import Session from "./dist/stream-session.mjs"
 import Bot from "./dist/stream-bot.mjs"
 import { rows, errorMessage } from "./host-values.mts"
-import { StreamStrategies } from "./stream-strategies.mts"
+import { StreamStrategies, type StrategyLogContext } from "./stream-strategies.mts"
 import type { Decision, RequestIdentity } from "./stream-strategy-types.mts"
 export type StreamDiagnostic = {
   session: number
@@ -16,7 +16,20 @@ export type StreamDiagnostic = {
   status: string
   commits: number
   lastError: string
-  logs: { event: string; detail: string; tick: number; at: number }[]
+  logs: {
+    event: string
+    detail: string
+    tick: number
+    at: number
+    session: number
+    run: number
+    generation: number
+    revision: string
+    request: number
+    decision: number
+    originSession: number
+    originRun: number
+  }[]
 }
 const query = new URL(location.href).searchParams
 function duration(name: string, fallback: number) {
@@ -49,6 +62,8 @@ export class BrowserStream {
   private intention = "Ready to observe"
   private logs: StreamDiagnostic["logs"] = []
   private error = ""
+  private adviceSource: StrategyLogContext | undefined
+  private frozenSource: StrategyLogContext | undefined
   private starting = false
   private frameTicks = 0
   private fpsFrames = 0
@@ -109,16 +124,42 @@ export class BrowserStream {
   private manifest() {
     return document.querySelector<HTMLInputElement>("#stream-strategy")?.value ?? "./stream-strategy.json"
   }
-  private log(event: string, detail: string) {
-    this.logs.push({ event, detail: detail.slice(0, 500), tick: this.latest, at: this.now() })
+  private log(event: string, detail: string, origin?: RequestIdentity, source?: StrategyLogContext) {
+    const identity = origin ?? source?.identity ?? this.machine.identity
+    this.logs.push({
+      event,
+      detail: detail.slice(0, 500),
+      tick: this.latest,
+      at: this.now(),
+      session: this.session,
+      run: this.run,
+      generation: source?.generation ?? this.machine.identity.generation,
+      revision: source?.revision ?? this.strategies?.contentRevision ?? "Bend fallback",
+      request: identity.request,
+      decision: identity.decision,
+      originSession: identity.session,
+      originRun: identity.run
+    })
     if (this.logs.length > 200) this.logs.splice(0, this.logs.length - 200)
   }
   private apply(input: BendABI.StreamSession.Input) {
+    const before = this.machine
     const result = Session.step(this.machine, input)
     this.machine = result.state
+    if (before.mode.$ === "Advice" && result.state.mode.$ === "Dwell") {
+      this.frozenSource = before.mode.received
+        ? this.adviceSource
+        : { generation: 0, revision: "Bend fallback", identity: before.identity }
+      this.log(
+        "recommendation-frozen",
+        String(result.state.mode.index),
+        this.frozenSource?.identity ?? before.identity,
+        this.frozenSource
+      )
+    }
     if (result.effect.$ === "Commit") {
       ++this.commits
-      this.log("commit", String(result.effect.index))
+      this.log("commit", String(result.effect.index), this.frozenSource?.identity ?? before.identity, this.frozenSource)
       this.hooks.choose(result.effect.index)
       this.machine = Session.step(this.machine, { $: "Played" }).state
       this.signature = ""
@@ -137,16 +178,18 @@ export class BrowserStream {
       this.logs = []
       this.commits = 0
       this.strategies = new StreamStrategies({
+        identity: () => this.machine.identity,
         ready: () => {},
         decision: (identity, result) => this.advice(identity, result),
-        log: (event, detail) => {
-          this.log(event, detail)
+        log: (event, detail, source) => {
+          this.log(event, detail, undefined, source)
           if (event.endsWith("failed")) this.error = detail
         }
       })
     }
     ++this.run
     this.memory = Bot.initial()
+    this.adviceSource = this.frozenSource = undefined
     this.signature = ""
     this.observation = undefined
     this.intention = "Find a safe route"
@@ -186,7 +229,13 @@ export class BrowserStream {
     } else if (this.machine.mode.$ === "Advice")
       accepted = this.apply({ $: "Reply", identity, index: this.machine.mode.fallback, now: this.now() })
     else accepted = this.apply({ $: "MovementReply", identity, index: 0, count: 1, now: this.now() })
-    this.log(accepted ? "advice-accepted" : "advice-rejected", result.label)
+    const source = {
+      generation: identity.generation,
+      revision: this.strategies?.contentRevision ?? "Bend fallback",
+      identity
+    }
+    this.log(accepted ? "advice-accepted" : "advice-rejected", result.label, identity, source)
+    if (accepted && this.machine.mode.$ === "Advice") this.adviceSource = source
     if (accepted) this.intention = result.label || "Follow the Bend policy"
     return accepted
   }
@@ -237,6 +286,7 @@ export class BrowserStream {
       const signature = `${phase}:${offers.map((offer) => `${offer.kind},${offer.id},${offer.level}`).join(";")}`
       if ((phase === 1 || phase === 2) && signature !== this.signature) {
         this.signature = signature
+        this.adviceSource = this.frozenSource = undefined
         this.strategies?.invalidate()
         this.observation = Bot.plan(
           this.memory,

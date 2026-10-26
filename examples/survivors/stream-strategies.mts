@@ -33,7 +33,9 @@ type Generation = {
   memoryVersion: number
   url: string
   hash: string
+  origin: RequestIdentity
 }
+export type StrategyLogContext = { generation: number; revision: string; identity?: RequestIdentity }
 export type StrategyStatus = "fallback" | "active" | "reloading" | "stopped"
 type Pending = { identity: RequestIdentity; timer: ReturnType<typeof setTimeout>; admitted: boolean }
 export class StreamStrategies {
@@ -53,15 +55,22 @@ export class StreamStrategies {
   revision = "Bend fallback"
   lastError = ""
   private readonly events: {
+    identity(): RequestIdentity
     ready(generation: number): void
     decision(identity: RequestIdentity, decision: Decision): boolean
-    log(event: string, detail: string): void
+    log(event: string, detail: string, source: StrategyLogContext): void
   }
   constructor(events: StreamStrategies["events"]) {
     this.events = events
   }
   get readyGeneration() {
     return this.candidate?.revision ? this.candidate.generation : undefined
+  }
+  get contentRevision() {
+    return this.active?.hash ?? "Bend fallback"
+  }
+  private context(source: Generation, identity?: RequestIdentity): StrategyLogContext {
+    return { generation: source.generation, revision: source.hash, identity: identity ?? source.origin }
   }
   get activeGeneration() {
     return this.active?.generation ?? 0
@@ -74,13 +83,14 @@ export class StreamStrategies {
     generation.worker.terminate()
     URL.revokeObjectURL(generation.url)
   }
-  private report(event: string, error: unknown) {
+  private report(event: string, error: unknown, source: StrategyLogContext) {
     this.lastError = errorMessage(error).slice(0, 500)
-    this.events.log(event, this.lastError)
+    this.events.log(event, this.lastError, source)
   }
   async reload(manifestUrl: string, observation: BendABI.StreamBot.Observation) {
     if (!this.alive) return
     const generation = ++this.generation
+    const origin = this.events.identity()
     this.fetchController?.abort()
     const controller = new AbortController()
     this.fetchController = controller
@@ -89,6 +99,8 @@ export class StreamStrategies {
     this.candidate = undefined
     clearTimeout(this.candidateTimer)
     this.status = "reloading"
+    let unownedBlob: string | undefined
+    let loadingRevision = manifestUrl.slice(0, 500)
     try {
       const manifestLocation = new URL(manifestUrl, location.href)
       const response = await fetch(manifestLocation, { cache: "no-store", signal: controller.signal })
@@ -109,15 +121,26 @@ export class StreamStrategies {
         .join("")
       if (hash !== revision) throw Error("Strategy bundle content does not match manifest revision")
       if (!this.alive || generation !== this.generation) return
+      loadingRevision = revision
       if (this.active?.hash === revision) {
         this.status = "active"
-        this.events.log("reload-unchanged", revision)
+        this.events.log("reload-unchanged", revision, this.context(this.active))
         return
       }
       const blob = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: "text/javascript" }))
+      unownedBlob = blob
       const worker = new Worker(new URL("./stream-strategy-worker.mjs", import.meta.url), { type: "module" })
-      const candidate: Generation = { worker, generation, revision: "", memoryVersion: -1, url: blob, hash: revision }
+      const candidate: Generation = {
+        worker,
+        generation,
+        revision: "",
+        memoryVersion: -1,
+        url: blob,
+        hash: revision,
+        origin
+      }
       this.candidate = candidate
+      unownedBlob = undefined
       worker.addEventListener("error", (event) => this.failed(candidate, event.message))
       worker.addEventListener("messageerror", () => this.failed(candidate, "Uncloneable Worker message"))
       worker.addEventListener("message", (event: MessageEvent<unknown>) =>
@@ -134,12 +157,18 @@ export class StreamStrategies {
       worker.postMessage(input)
     } catch (error) {
       if (this.alive && generation === this.generation) {
+        if (this.candidate?.generation === generation) {
+          this.dispose(this.candidate)
+          this.candidate = undefined
+          clearTimeout(this.candidateTimer)
+        }
         this.status = this.active ? "active" : "fallback"
-        this.report("candidate-failed", error)
+        this.report("candidate-failed", error, { generation, revision: loadingRevision, identity: origin })
         this.retryAt = performance.now() + Math.min(30000, 1000 * 2 ** Math.min(this.failures++, 5))
       }
     } finally {
       clearTimeout(fetchTimer)
+      if (unownedBlob) URL.revokeObjectURL(unownedBlob)
     }
   }
   private receive(source: Generation, hash: string, value: unknown) {
@@ -154,7 +183,7 @@ export class StreamStrategies {
         clearTimeout(this.candidateTimer)
         source.revision = `${text(message.revision)} · ${hash.slice(0, 12)}`
         source.memoryVersion = number(message.memoryVersion)
-        this.events.log("candidate-ready", source.revision)
+        this.events.log("candidate-ready", source.revision, this.context(source))
         this.events.ready(source.generation)
       } else if (message.kind === "decision" && source === this.active && this.pending) {
         const identity = object(message.identity)
@@ -166,7 +195,12 @@ export class StreamStrategies {
         this.pending = undefined
         if (admitted) {
           if (this.events.decision(expected, result)) this.memory = result.memory
-        } else this.events.log("obsolete-advice", "Decision completed after admission was invalidated")
+        } else
+          this.events.log(
+            "obsolete-advice",
+            "Decision completed after admission was invalidated",
+            this.context(source, expected)
+          )
         const queued = this.queued
         this.queued = undefined
         if (queued) this.request(queued.identity, queued.observation)
@@ -182,15 +216,19 @@ export class StreamStrategies {
     this.dispose(this.active)
     if (candidate.memoryVersion !== this.memoryVersion) {
       this.memory = null
-      this.events.log("memory-reset", `Version ${this.memoryVersion} → ${candidate.memoryVersion}`)
-    } else this.events.log("memory-preserved", `Version ${this.memoryVersion}`)
+      this.events.log(
+        "memory-reset",
+        `Version ${this.memoryVersion} → ${candidate.memoryVersion}`,
+        this.context(candidate)
+      )
+    } else this.events.log("memory-preserved", `Version ${this.memoryVersion}`, this.context(candidate))
     this.memoryVersion = candidate.memoryVersion
     this.active = candidate
     this.candidate = undefined
     this.status = "active"
     this.revision = candidate.revision
     this.failures = 0
-    this.events.log("activated", this.revision)
+    this.events.log("activated", this.revision, this.context(candidate))
   }
   request(identity: RequestIdentity, observation: BendABI.StreamBot.Observation) {
     if (!this.alive || !this.active) return
@@ -236,14 +274,15 @@ export class StreamStrategies {
       this.dispose(this.candidate)
       this.candidate = undefined
       this.status = this.active ? "active" : "fallback"
-      this.report("candidate-failed", error)
+      this.report("candidate-failed", error, this.context(source))
     } else if (source === this.active) {
+      const pendingIdentity = this.pending?.identity
       this.retireExecution()
       this.dispose(this.active)
       this.active = undefined
       this.status = this.candidate ? "reloading" : "fallback"
       this.revision = "Bend fallback"
-      this.report("active-failed", error)
+      this.report("active-failed", error, this.context(source, pendingIdentity))
     }
     this.retryAt = performance.now() + Math.min(30000, 1000 * 2 ** Math.min(this.failures++, 5))
   }

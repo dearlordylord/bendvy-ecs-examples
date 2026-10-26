@@ -222,7 +222,7 @@ already being displayed finishes before a prepared replacement activates.
 
 For a hosted strategy update, publish the immutable bundled module first and its
 manifest last, then reload. Both must share an origin; a cross-origin manifest
-must permit browser CORS requests. Serve over HTTP(S), not `file:`. The runtime
+must permit browser CORS requests. Use HTTPS or localhost for WebCrypto hash verification, not `file:`. The runtime
 uses module Workers and hash-verified Blob module imports, so a restrictive CSP
 must allow the application's Worker script and `blob:` script imports. Strategies
 are trusted operator code; Worker isolation is not a hostile-code sandbox. A
@@ -237,7 +237,10 @@ most twice per second, with one outstanding request. Candidate fetches time out
 after 3 seconds, Worker preparation after 1 second, and active decisions after
 300 ms. Manifests are limited to 8 KiB and bundled code to 256 KiB. Strategy
 memory is limited to 64 KiB, depth 12 and 8192 values; labels to 160 characters.
-Diagnostics retain the most recent 200 records. Replaced Workers and Blob URLs
+Diagnostics retain the most recent 200 records. Each record identifies the event
+session/run, originating session/run/request/decision, and strategy generation
+and content hash (or manifest URL before verification). Retained advice and
+candidate failures remain attributable after run rotation or reload. Replaced Workers and Blob URLs
 are reclaimed. Old content-addressed files on the development server may be
 removed when no session still needs them.
 
