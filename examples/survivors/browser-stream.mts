@@ -29,6 +29,7 @@ export type StreamDiagnostic = {
     decision: number
     originSession: number
     originRun: number
+    intention: BendABI.StreamBot.Intention | null
   }[]
 }
 const query = new URL(location.href).searchParams
@@ -124,7 +125,13 @@ export class BrowserStream {
   private manifest() {
     return document.querySelector<HTMLInputElement>("#stream-strategy")?.value ?? "./stream-strategy.json"
   }
-  private log(event: string, detail: string, origin?: RequestIdentity, source?: StrategyLogContext) {
+  private log(
+    event: string,
+    detail: string,
+    origin?: RequestIdentity,
+    source?: StrategyLogContext,
+    intention: BendABI.StreamBot.Intention | null = null
+  ) {
     const identity = origin ?? source?.identity ?? this.machine.identity
     this.logs.push({
       event,
@@ -138,7 +145,8 @@ export class BrowserStream {
       request: identity.request,
       decision: identity.decision,
       originSession: identity.session,
-      originRun: identity.run
+      originRun: identity.run,
+      intention
     })
     if (this.logs.length > 200) this.logs.splice(0, this.logs.length - 200)
   }
@@ -234,7 +242,7 @@ export class BrowserStream {
       revision: this.strategies?.contentRevision ?? "Bend fallback",
       identity
     }
-    this.log(accepted ? "advice-accepted" : "advice-rejected", result.label, identity, source)
+    this.log(accepted ? "advice-accepted" : "advice-rejected", result.label, identity, source, intention)
     if (accepted && this.machine.mode.$ === "Advice") this.adviceSource = source
     if (accepted) this.intention = result.label || "Follow the Bend policy"
     return accepted
