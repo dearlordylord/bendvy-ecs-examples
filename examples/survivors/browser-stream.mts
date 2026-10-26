@@ -130,7 +130,9 @@ export class BrowserStream {
     this.starting = true
     if (newSession) {
       this.strategies?.stop()
-      this.session = Date.now()
+      const session = Math.max(Date.now(), this.session + 1)
+      if (!Number.isSafeInteger(session)) throw Error("Stream session identity exhausted")
+      this.session = session
       this.run = 0
       this.logs = []
       this.commits = 0
