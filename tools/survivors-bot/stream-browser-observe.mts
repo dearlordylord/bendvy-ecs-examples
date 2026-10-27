@@ -1,4 +1,34 @@
 export function installStreamObservers() {
+  if (new URL(location.href).searchParams.has("stream-goals-check")) {
+    const positions: { tick: number; x: number; y: number }[] = []
+    new MutationObserver((mutations) => {
+      const canvas = document.querySelector<HTMLCanvasElement>("#game")
+      if (!canvas) return
+      const state = {
+        tick: Number(canvas.dataset.tick),
+        x: Number(canvas.dataset.playerX),
+        y: Number(canvas.dataset.playerY)
+      }
+      const batch: typeof positions = []
+      for (const mutation of mutations.toReversed()) {
+        if (mutation.target !== canvas) continue
+        if (mutation.attributeName === "data-tick") {
+          if (Number.isFinite(state.tick) && state.tick <= 120) batch.push({ ...state })
+          state.tick = Number(mutation.oldValue)
+        } else if (mutation.attributeName === "data-player-x") state.x = Number(mutation.oldValue)
+        else if (mutation.attributeName === "data-player-y") state.y = Number(mutation.oldValue)
+      }
+      positions.push(...batch.toReversed())
+      if (positions.length > 256) positions.splice(0, positions.length - 256)
+      document.documentElement.dataset.checkGoalPositions = JSON.stringify(positions)
+    }).observe(document, {
+      subtree: true,
+      attributes: true,
+      attributeOldValue: true,
+      attributeFilter: ["data-tick", "data-player-x", "data-player-y"]
+    })
+  }
+  const goalInputs: unknown[] = []
   const liveBlobs = new Set<string>()
   const createObjectURL = URL.createObjectURL.bind(URL)
   const revokeObjectURL = URL.revokeObjectURL.bind(URL)
@@ -47,6 +77,27 @@ export function installStreamObservers() {
         "observation" in message
       ) {
         const observation = message.observation
+        if (
+          observation !== null &&
+          typeof observation === "object" &&
+          "phase" in observation &&
+          observation.phase === 0 &&
+          "tick" in observation &&
+          "px" in observation &&
+          "py" in observation &&
+          "goals" in observation &&
+          "identity" in message
+        ) {
+          goalInputs.push({
+            identity: message.identity,
+            tick: observation.tick,
+            px: observation.px,
+            py: observation.py,
+            goals: observation.goals
+          })
+          if (goalInputs.length > 16) goalInputs.shift()
+          document.documentElement.dataset.checkGoalInputs = JSON.stringify(goalInputs)
+        }
         if (
           observation !== null &&
           typeof observation === "object" &&

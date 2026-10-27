@@ -13,6 +13,7 @@ import {
   snapshotApplication,
   fixtureServer,
   strategySource,
+  goalStrategySource,
   type StrategyFault
 } from "./stream-browser-server.mts"
 
@@ -33,6 +34,12 @@ const soakHours = Number(option("--soak-hours", "0"))
 assert(Number.isFinite(soakHours) && soakHours >= 0, "--soak-hours must be a nonnegative finite number")
 const soakOnly = args.includes("--soak-only")
 const audioOnly = args.includes("--audio-only")
+const goalsOnly = args.includes("--goals-only")
+assert(!goalsOnly || (!audioOnly && !soakOnly && soakHours === 0), "--goals-only requires its own focused run")
+assert(
+  !goalsOnly || selectedBrowser === "chromium",
+  "--goals-only requires --browser chromium for common-tick Canvas capture"
+)
 assert(!audioOnly || (!soakOnly && soakHours === 0), "--audio-only cannot be combined with soak modes")
 const headed = args.includes("--headed")
 assert(
@@ -200,6 +207,162 @@ async function runBrowser(kind: BrowserType) {
     url.searchParams.set("between", "2000")
     let baselineProfile: string | null = null
     try {
+      if (goalsOnly) {
+        const displacements: number[] = []
+        const starts: { tick: number; x: number; y: number }[] = []
+        const outcomes: { direction: "east" | "west"; dx: number; distanceBefore: number; distanceAfter: number }[] = []
+        const tracks: {
+          direction: "east" | "west"
+          positions: { tick: number; x: number; y: number }[]
+          startX: number
+          startY: number
+          targetX: number
+          targetY: number
+        }[] = []
+        url.searchParams.set("stream-goals-check", "1")
+        for (const direction of ["east", "west"] satisfies ("east" | "west")[]) {
+          await scenario(browserName, `external ${direction} goal matches supplied candidate`, async () => {
+            const hash = fixture.publish(goalStrategySource(direction))
+            url.searchParams.set("strategy", fixture.manifest)
+            await page.goto(url.href)
+            await page.locator("#stream-start").click()
+            const accepted = await until(page, (d) =>
+              d.logs.some(
+                (log) =>
+                  log.event === "advice-accepted" &&
+                  log.detail === `goal-${direction}` &&
+                  log.intention?.$ === "GoalChoice"
+              )
+            )
+            const decision = accepted.logs.find(
+              (log) => log.event === "advice-accepted" && log.detail === `goal-${direction}`
+            )
+            assert(decision?.intention?.$ === "GoalChoice")
+            assert.equal(decision.revision, hash)
+            const inputs: unknown = JSON.parse(
+              await page.evaluate(() => document.documentElement.dataset.checkGoalInputs ?? "[]")
+            )
+            assert(Array.isArray(inputs))
+            const supplied = inputs.map(record).find((input) => record(input.identity).request === decision.request)
+            assert(supplied, "Accepted external goal must match an actual supplied Worker observation")
+            let goals: unknown = supplied.goals
+            let target: Record<string, unknown> | undefined
+            while (goals !== null && typeof goals === "object") {
+              const row = record(goals)
+              if (row.$ !== "Con") break
+              const goal = record(row.head)
+              if (goal.index === decision.intention.index) target = goal
+              goals = row.tail
+            }
+            assert(target, "Accepted index must identify a supplied bounded candidate")
+            assert.equal(target.kind, direction === "east" ? 13 : 15)
+            const startX = number(supplied.px, "supplied player x"),
+              startY = number(supplied.py, "supplied player y")
+            const targetX = number(target.x, "goal x"),
+              targetY = number(target.y, "goal y")
+            const tick = number(supplied.tick, "supplied tick")
+            assert(tick < 60, "External goal must be admitted before the common early measurement endpoint")
+            await page.waitForFunction(
+              () => Number(document.querySelector<HTMLCanvasElement>("#game")?.dataset.tick) >= 105
+            )
+            await page.locator("#stream-pause").click()
+            const trajectory: unknown = JSON.parse(
+              await page.evaluate(() => document.documentElement.dataset.checkGoalPositions ?? "[]")
+            )
+            assert(Array.isArray(trajectory))
+            const positions = trajectory.map(record)
+            await writeFile(
+              path.join(out, `${browserName}-goal-${direction}-trajectory.json`),
+              JSON.stringify(positions, null, 2)
+            )
+            const initial = positions.find((point) => point.tick === 0),
+              endpoint = positions.find((point) => number(point.tick, "point tick") >= 80)
+            assert(initial && endpoint, "Actual canvas projections must contain initial tick0 and early endpoint")
+            tracks.push({
+              direction,
+              startX,
+              startY,
+              targetX,
+              targetY,
+              positions: positions.map((point) => ({
+                tick: number(point.tick, "point tick"),
+                x: number(point.x, "point x"),
+                y: number(point.y, "point y")
+              }))
+            })
+            const position = {
+              tick: number(endpoint.tick, "endpoint tick"),
+              x: number(endpoint.x, "endpoint x"),
+              y: number(endpoint.y, "endpoint y")
+            }
+            const initialPosition = {
+              tick: number(initial.tick, "initial tick"),
+              x: number(initial.x, "initial x"),
+              y: number(initial.y, "initial y")
+            }
+            starts.push(initialPosition)
+            const dx = position.x - initialPosition.x,
+              dy = position.y - initialPosition.y
+            await writeFile(
+              path.join(out, `${browserName}-goal-${direction}-observed.json`),
+              JSON.stringify({ decision, supplied, target, initialPosition, position, dx, dy, positions }, null, 2)
+            )
+            await page.screenshot({ path: path.join(out, `${browserName}-goal-${direction}.png`) })
+            return { seed: 982451653, decision, supplied, target, initialPosition, position, dx, dy }
+          })
+        }
+        await scenario(browserName, "opposing external goals control actual navigation", async () => {
+          assert.deepEqual(
+            starts[0],
+            starts[1],
+            "Same-seed contrast must start at the exact same canvas tick and coordinates"
+          )
+          assert.deepEqual(pageErrors, [], "Unexpected page errors during external-goal navigation")
+          const [east, west] = tracks
+          assert(east && west)
+          const common = east.positions.find(
+            (point) =>
+              point.tick >= 80 && point.tick <= 100 && west.positions.some((other) => other.tick === point.tick)
+          )
+          assert(common, "Both actual projections must contain an identical early endpoint tick")
+          for (const track of tracks) {
+            const point = track.positions.find((point) => point.tick === common.tick)
+            assert(point)
+            const initial = starts[0]
+            assert(initial)
+            const dx = point.x - initial.x
+            displacements.push(dx)
+            outcomes.push({
+              direction: track.direction,
+              dx,
+              distanceBefore: Math.hypot(track.targetX - track.startX, track.targetY - track.startY),
+              distanceAfter: Math.hypot(track.targetX - point.x, track.targetY - point.y)
+            })
+          }
+          await writeFile(
+            path.join(out, `${browserName}-goal-contrast.json`),
+            JSON.stringify({ starts, endpointTick: common.tick, outcomes }, null, 2)
+          )
+          for (const result of outcomes) {
+            assert(
+              result.direction === "east" ? result.dx > 30 : result.dx < -30,
+              "External goal must change actual player movement in requested direction"
+            )
+            assert(
+              result.distanceAfter < result.distanceBefore - 20,
+              "Actual player must approach the supplied external goal"
+            )
+          }
+          assert(
+            displacements[0] !== undefined &&
+              displacements[1] !== undefined &&
+              displacements[0] - displacements[1] > 60,
+            "Same-seed opposing external goals must produce opposing physical trajectories"
+          )
+          return { starts, endpointTick: common.tick, outcomes }
+        })
+        return
+      }
       await page.goto(url.href)
       await page.locator("#stream-start").waitFor()
       baselineProfile = await page.evaluate((key) => localStorage.getItem(key), profileKey)

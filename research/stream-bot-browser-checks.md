@@ -57,6 +57,27 @@ silent master PCM; unmuted play and audio resume must recover nonzero PCM while
 reusing one context. This check changes the ordinary sound preference through its
 supported public control and verifies bot play preserves the resulting profile.
 
+## External goal navigation
+
+Run `--browser chromium --goals-only` to contrast east and west cardinal advice in fresh runs with
+the same seed. Each accepted generated `GoalChoice` must match the exact index,
+request and source hash of a real supplied bounded candidate. A read-only DOM
+observer reconstructs the early Canvas position projections, including updates
+batched in one browser task. Both runs must share the same initial tick and
+coordinates and an identical endpoint tick between 80 and 100. The player must
+move in the requested horizontal direction and approach its supplied goal.
+Default-only movement cannot pass by using different measurement windows.
+This focused check requires Chromium: the diagnostic WPE WebKit capture can
+sample every sixth HUD tick with different phases between runs, leaving no
+identical sampled endpoint. No interpolated or fabricated positions are used.
+Other acceptance checks still run in both browsers.
+
+The driver saves both trajectories before asserting their physical contrast, so
+a rejected implementation retains observations for diagnosis. Chromium against
+the immutable `d847fc3` build accepts both cardinal intentions but fails this
+physical navigation gate. That build cannot qualify external strategy control;
+its interrupted long soak is not transferable to a corrected runtime.
+
 ## Foreground soak
 
 Run a separate long session after the short acceptance checks pass:

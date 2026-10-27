@@ -15,6 +15,23 @@ export type StrategyFault =
   | "malformed"
   | "delayed"
 
+export function goalStrategySource(direction: "east" | "west"): string {
+  return `
+export const revision = 'goal-${direction}';
+export const memoryVersion = 1;
+export function decide(observation, memory) {
+  let rows = observation.goals;
+  while (rows && rows.$ === 'Con') {
+    const goal = rows.head;
+    if (goal.kind === ${direction === "east" ? 13 : 15})
+      return {intention:{$:'GoalChoice',index:goal.index},memory:null,label:'goal-${direction}'};
+    rows = rows.tail;
+  }
+  return {intention:{$:'Default'},memory:null,label:'no-${direction}-candidate'};
+}
+`
+}
+
 export function strategySource({
   label,
   memoryVersion = 1,
