@@ -267,7 +267,6 @@ Verify the pure production session decisions with:
 node examples/survivors/check-stream-session.mts
 node examples/survivors/check-stream-observation.mts
 node --test examples/survivors/stream-strategy-values.test.mts
-node --test tools/survivors-bot/build-stream-strategy.test.mts
 ```
 
 This runs Bend laws, literal scenarios and typechecked production mutations.
