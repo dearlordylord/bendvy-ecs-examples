@@ -115,16 +115,24 @@ export class BrowserStream {
     this.draw()
   }
   openControls() {
-    if (this.operatorWindow && !this.operatorWindow.closed) {
-      this.operatorWindow.focus()
-      return true
+    let operator = this.operatorWindow
+    if (operator && !operator.closed) {
+      try {
+        if (operator.document.URL !== "about:blank") operator = null
+      } catch {
+        operator = null
+      }
     }
-    const operator = window.open("", "_blank", "popup,width=560,height=680")
+    if (!operator || operator.closed) operator = window.open("", "_blank", "popup,width=560,height=680")
     if (!operator) {
       this.hooks.notice("Allow popups for this site, then press F2 to open bot controls.")
       return false
     }
     this.operatorWindow = operator
+    if (operator.document.body.contains(this.controls)) {
+      operator.focus()
+      return true
+    }
     const title = operator.document.createElement("title")
     title.textContent = "Nightfall bot controls"
     const styles = operator.document.createElement("link")
@@ -134,6 +142,7 @@ export class BrowserStream {
     operator.document.body.className = "stream-controller"
     operator.document.body.replaceChildren(this.controls)
     this.draw()
+    operator.focus()
     return true
   }
   startFromGesture() {
