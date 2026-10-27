@@ -226,14 +226,18 @@ The ordinary game must reach an actual accepted frozen upgrade recommendation
 within a bounded 15-minute arrival wait. The earlier 180-second attempt reached
 only 40 simulation seconds under machine load, before an offer arrived; this
 arrival budget does not alter any dwell or Stop assertion. Focused setup allows
-up to 15 minutes for the shipped strategy's actual automatic recovery. A failed
-replacement retains the healthy strategy and does not retry automatically, so
-fixture setup uses at most 30 public Reload attempts within 15 minutes, with at
-least three seconds between attempts. A retry requires an observed failure of the
+one 15-minute deadline across initial readiness, the shipped strategy's actual
+automatic recovery, and fixture activation attempts. A failed replacement retains the healthy strategy and does not retry automatically, so
+fixture setup uses at most 30 public Reload attempts within that shared
+deadline, with at least three seconds between attempts. A retry requires an observed failure of the
 requested candidate and its retirement; live candidates never overlap. Production
 preparation remains limited to 1000 ms per attempt. The check requires actual
 desired-revision activation, and records every attempt, rather than claiming a
-first-attempt latency guarantee. During its configured 10-second dwell, a real replacement Worker must become
+first-attempt latency guarantee. Focused Start, Reload and Stop controls use native
+keyboard Enter after focusing their visible, enabled public buttons. This avoids
+coordinate-stability waits while live status text changes under slow rendering;
+ordinary full-suite controls keep their click coverage. During its configured
+10-second dwell, a real replacement Worker must become
 candidate-ready while activation remains deferred. Public Stop must precede the
 commit. The check observes the full dwell plus a margin after Stop: no offer
 commit, candidate activation, automatic restart, Canvas tick advancement, new

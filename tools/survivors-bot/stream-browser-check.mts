@@ -187,9 +187,18 @@ async function scenario(browser: string, name: string, run: () => Promise<unknow
   await report()
   process.stdout.write(`${browser}: PASS ${name}\n`)
 }
+async function activateControl(page: Page, selector: string) {
+  const control = page.locator(selector)
+  if (stopFrozenOnly) {
+    assert(await control.isVisible(), "Focused public control must be visible")
+    assert(await control.isEnabled(), "Focused public control must be enabled")
+    await control.focus()
+    await page.keyboard.press("Enter")
+  } else await control.click()
+}
 async function revision(page: Page, label: string, fault: StrategyFault = "healthy", memoryVersion = 1) {
   const hash = fixture.publish(strategySource({ label, fault, memoryVersion }))
-  await page.locator("#stream-reload").click()
+  await activateControl(page, "#stream-reload")
   return hash
 }
 function browserRss(rootPid: number): number {
@@ -416,29 +425,32 @@ async function runBrowser(kind: BrowserType) {
         })
         return
       }
+      const setupStarted = performance.now()
+      const setupDeadline = setupStarted + 900000
+      const setupRemaining = (ordinaryMs: number) =>
+        stopFrozenOnly ? Math.max(1, setupDeadline - performance.now()) : ordinaryMs
       await page.goto(url.href)
       await page.locator("#stream-start").waitFor()
       baselineProfile = await page.evaluate((key) => localStorage.getItem(key), profileKey)
-      await page.locator("#stream-start").click()
-      await until(page, (d) => d.tick > 5 && d.generation > 0, 120000)
+      await activateControl(page, "#stream-start")
+      await until(page, (d) => d.tick > 5 && d.generation > 0, setupRemaining(120000))
       await scenario(browserName, "shipped default strategy", async () => {
         const live = await until(
           page,
           (d) => d.revision.includes("collector-v1") && d.logs.some((log) => log.event === "advice-accepted"),
-          stopFrozenOnly ? 900000 : 30000
+          setupRemaining(30000)
         )
         return { live, sourceIdentity }
       })
       await page.locator("#stream-strategy").fill(fixture.manifest)
       if (stopFrozenOnly) {
-        const setupStarted = performance.now()
         const attempts: { attempt: number; before: Diagnostics; after: Diagnostics; requestedAtMs: number }[] = []
         let activated = false
-        for (let attempt = 1; attempt <= 30 && performance.now() - setupStarted < 900000; attempt++) {
+        for (let attempt = 1; attempt <= 30 && performance.now() < setupDeadline; attempt++) {
           const before = await diagnostics(page)
           const previousEventAt = before.logs.at(-1)?.at ?? -1
           const requestedAtMs = performance.now() - setupStarted
-          await page.locator("#stream-reload").click()
+          await activateControl(page, "#stream-reload")
           const after = await until(
             page,
             (d) =>
@@ -446,7 +458,7 @@ async function runBrowser(kind: BrowserType) {
               d.logs.some(
                 (log) => log.event === "candidate-failed" && log.revision === initialHash && log.at > previousEventAt
               ),
-            Math.max(1, 900000 - (performance.now() - setupStarted))
+            setupRemaining(30000)
           )
           attempts.push({ attempt, before, after, requestedAtMs })
           await writeFile(path.join(out, `${browserName}-stop-frozen-setup.json`), JSON.stringify(attempts, null, 2))
@@ -497,7 +509,7 @@ async function runBrowser(kind: BrowserType) {
           assert.equal(prepared.commits, frozen.commits, "Stop must precede recommendation commit")
           assert.equal(prepared.revision, frozen.revision, "Prepared replacement must remain deferred")
           assert(!prepared.logs.some((log) => log.event === "activated" && log.revision === replacement))
-          await page.locator("#stream-stop").click()
+          await activateControl(page, "#stream-stop")
           const stopped = await until(page, (d) => d.mode === "Stopped")
           const stopAudio = await audioObservation(page)
           const stopCanvasTick = await page.locator("#game").getAttribute("data-tick")
@@ -541,7 +553,7 @@ async function runBrowser(kind: BrowserType) {
           }
           assert.equal(workers, 0, "Stop must retire active and prepared strategy Workers")
           assert.equal(await page.locator("#dialog .stream-recommendation:visible").count(), 0)
-          await page.locator("#stream-start").click()
+          await activateControl(page, "#stream-start")
           const restarted = await until(page, (d) => d.mode === "Playing" && d.tick > 5, 30000)
           assert.notEqual(restarted.session, frozen.session, "Public restart must create a fresh session identity")
           assert.equal(restarted.run, 1)
@@ -552,7 +564,7 @@ async function runBrowser(kind: BrowserType) {
           )
           assert.deepEqual(pageErrors, [])
           const restartAudio = await audioObservation(page)
-          await page.locator("#stream-stop").click()
+          await activateControl(page, "#stream-stop")
           return {
             dwellMs,
             frozen,
