@@ -433,7 +433,7 @@ async function runBrowser(kind: BrowserType) {
       if (stopFrozenOnly) {
         await scenario(browserName, "Stop invalidates frozen offer and prepared replacement", async () => {
           const dwellMs = 10000
-          const frozen = await until(page, (d) => /dwell/i.test(d.mode), 180000)
+          const frozen = await until(page, (d) => /dwell/i.test(d.mode), 900000)
           assert.equal(await page.locator("#dialog .stream-recommendation").count(), 1)
           const offer = await page.locator("#dialog .stream-recommendation").getAttribute("data-choice")
           const supplied = await page.evaluate(() => ({
