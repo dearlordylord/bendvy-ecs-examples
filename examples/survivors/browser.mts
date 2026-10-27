@@ -1,3 +1,4 @@
+import type { BrowserStream } from "./browser-stream.mts"
 import { gameFrame } from "./observations.mts"
 import { escapeHtml as esc, displayText, defined, errorMessage, at, text } from "./host-values.mts"
 import { element, enableSecondaryRewardTouch } from "./dom.mts"
@@ -9,6 +10,7 @@ import { WEAPONS, PASSIVES, CHARACTERS, STAGES, ACHIEVEMENTS, UNIONS } from "./c
 import { renderExpeditionAction } from "./expedition-menu.mts"
 import {
   loadProfile,
+  isolatedStreamProfile,
   saveProfile,
   buyUpgrade,
   metaCode,
@@ -96,7 +98,11 @@ function prepareRuntime() {
       })
   return runtimeTask
 }
-const profile = loadProfile()
+const streamMode = new URL(location.href).searchParams.get("stream") === "1"
+const profile = streamMode
+  ? isolatedStreamProfile(loadProfile(), new URL(location.href).searchParams.get("persist") === "1")
+  : loadProfile()
+let stream: BrowserStream | undefined
 let state: BendABI.Game.State | undefined,
   frame: Frame,
   running = false,
@@ -234,6 +240,7 @@ function accept(packet: BendABI.Game.Packet | { $: "Failed"; error: string }) {
   if (packet.$ !== "Packet") throw Error("Invalid simulation response")
   const observed = Game.observe(packet.state)
   state = observed.state
+  stream?.observed(state)
   const old = frame
   frame = gameFrame(observed.observation)
   if (old?.phase === 0 && [1, 2].includes(frame.phase)) upgradeOpen = true
@@ -245,7 +252,7 @@ function accept(packet: BendABI.Game.Packet | { $: "Failed"; error: string }) {
     phase()
   }
 }
-async function start() {
+async function start(streamSeed?: number) {
   if (starting) return
   starting = true
   const buttons = [...document.querySelectorAll<HTMLButtonElement>("#start,#start-top,#restart")]
@@ -260,6 +267,7 @@ async function start() {
   } catch (error) {
     status.textContent = "Could not load the game. Check your connection and reload."
     console.error(error)
+    if (streamSeed !== undefined) throw error
     return
   } finally {
     starting = false
@@ -268,6 +276,7 @@ async function start() {
       button.removeAttribute("aria-busy")
     })
   }
+  if (streamSeed !== undefined && !stream?.runningSession) return
   status.textContent = ""
   ;({ character, stage, arcana, mode } = validateSetup(profile, { character, stage, arcana, mode }))
   upgradeOpen = false
@@ -286,7 +295,11 @@ async function start() {
   $("#menu").hidden = true
   $("#hud").hidden = false
   $("#joystick").hidden = !matchMedia("(pointer:coarse)").matches
-  accept(Game.start(character, metaCode(profile)))
+  accept(
+    streamSeed === undefined
+      ? Game.start(character, metaCode(profile))
+      : Game.start_seed(character, metaCode(profile), streamSeed)
+  )
   consume("configure", stage, arcana)
   consume("set_mode", mode)
   consume("configure_unlocks", allowedWeapons(profile))
@@ -301,7 +314,7 @@ function focusDialog() {
 function phase() {
   if (!running) return
   banishing = false
-  paused = false
+  if (!streamMode) paused = false
   if (![1, 2].includes(frame.phase)) upgradeOpen = false
   if (frame.phase === 0 || ([1, 2].includes(frame.phase) && !upgradeOpen)) {
     const wasOpen = !$("#overlay").hidden
@@ -359,6 +372,10 @@ function openUpgrade() {
   phase()
 }
 function pause(value?: boolean) {
+  if (streamMode) {
+    stream?.pause(value ?? !stream.paused)
+    return
+  }
   if (upgradeOpen) {
     if (value === true) return
     upgradeOpen = false
@@ -434,6 +451,8 @@ function animation(now: number) {
   previous = now
   try {
     if (running && frame) {
+      stream?.frame(now, state)
+      if (streamMode) paused = stream?.paused ?? true
       if (!paused && !upgradeOpen && [0, 1, 2].includes(frame.phase)) {
         accumulator += dt
         while (accumulator >= STEP) {
@@ -446,7 +465,14 @@ function animation(now: number) {
               Number(keys.has("KeyW") || keys.has("ArrowUp")) +
               touch.y,
             l = Math.max(1, Math.hypot(dx, dy))
-          consume("advance_live", dx / l, dy / l)
+          if (stream) {
+            if (!stream.canMove) {
+              accumulator = 0
+              break
+            }
+            const movement = stream.movement(defined(state))
+            consume("advance_live", movement.x, movement.y)
+          } else consume("advance_live", dx / l, dy / l)
           accumulator -= STEP
           if (![0, 1, 2].includes(frame.phase) || upgradeOpen) {
             accumulator = 0
@@ -459,8 +485,10 @@ function animation(now: number) {
       hud()
     }
   } catch (e) {
-    fail(e)
+    if (stream) stream.fail(e)
+    else fail(e)
   }
+  if (!running) stream?.frame(now, undefined)
   requestAnimationFrame(animation)
 }
 let banishing = false
@@ -532,6 +560,7 @@ document.addEventListener("click", (event) => {
       collectionTab = b.dataset.collection
       menu()
     } else if (b.dataset.choice !== undefined) {
+      if (streamMode) return
       audio.event("choose")
       upgradeOpen = false
       consume(banishing ? "banish" : "choose", Number(b.dataset.choice))
@@ -540,6 +569,7 @@ document.addEventListener("click", (event) => {
       phase()
       shownPhase = frame.phase
     } else if (b.dataset.run) {
+      if (streamMode) return
       if (b.dataset.run === "skip") upgradeOpen = false
       if (b.dataset.run !== "reroll" && b.dataset.run !== "skip") throw new Error("Unknown run action")
       consume(b.dataset.run)
@@ -547,13 +577,22 @@ document.addEventListener("click", (event) => {
       phase()
       shownPhase = frame.phase
     } else if (b.id === "banish") {
+      if (streamMode) return
       banishing = !banishing
       b.textContent = banishing ? "Choose an ability to banish" : "Banish an offer…"
-    } else if (b.id === "start" || b.id === "start-top" || b.id === "restart") start().catch(fail)
-    else if (b.id === "map") pause(true)
+    } else if (b.id === "start" || b.id === "start-top" || b.id === "restart") {
+      if (streamMode) document.querySelector<HTMLButtonElement>("#stream-start")?.click()
+      else start().catch(fail)
+    } else if (b.id === "map") pause(true)
     else if (b.id === "pause" || b.id === "resume") pause()
-    else if (b.id === "return") menu()
-    else if (b.id === "abandon") {
+    else if (b.id === "return") {
+      if (stream) stream.stop()
+      else menu()
+    } else if (b.id === "abandon") {
+      if (stream) {
+        stream.stop()
+        return
+      }
       recordRun(profile, { ...runResult(), phase: 3 })
       saveProfile(profile)
       menu()
@@ -587,7 +626,7 @@ window.addEventListener("keydown", (e) => {
     if (!e.repeat && !upgradeOpen) pause()
     return
   }
-  if (!$("#overlay").hidden && e.code === "Tab") {
+  if (!streamMode && !$("#overlay").hidden && e.code === "Tab") {
     const controls = [
       ...$("#dialog").querySelectorAll<HTMLElement>("button:not(:disabled),input:not(:disabled),[tabindex='0']")
     ]
@@ -644,7 +683,7 @@ window.addEventListener("keydown", (e) => {
 window.addEventListener("keyup", (e) => keys.delete(e.code))
 window.addEventListener("blur", () => {
   keys.clear()
-  pause(true)
+  if (!streamMode) pause(true)
 })
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) pause(true)
@@ -684,3 +723,43 @@ requestAnimationFrame(animation)
 prepareRuntime().catch(() => {
   /* Keep the menu usable if the game download fails. */
 })
+
+if (streamMode) {
+  document.body.classList.add("stream-mode")
+  const launchButtons = [...document.querySelectorAll<HTMLButtonElement>("#start,#start-top")]
+  launchButtons.forEach((button) => {
+    button.disabled = true
+  })
+  $("#engineStatus").textContent = "Preparing stream…"
+  import("./browser-stream.mts")
+    .then(({ BrowserStream }) => {
+      stream = new BrowserStream({
+        start: async (seed) => {
+          await start(seed)
+        },
+        choose: (index) => {
+          upgradeOpen = false
+          audio.event("choose")
+          consume("choose", index)
+          shownPhase = -1
+          phase()
+          shownPhase = frame.phase
+        },
+        stop: () => {
+          running = false
+          paused = false
+          accumulator = 0
+          audio.stop(true)
+          menu()
+        },
+        audio: () => audio.engine?.context?.state ?? audio.context?.state ?? "locked",
+        unlock: () => audio.unlock(),
+        audioStop: () => audio.stop()
+      })
+      launchButtons.forEach((button) => {
+        button.disabled = false
+      })
+      $("#engineStatus").textContent = ""
+    })
+    .catch(fail)
+}

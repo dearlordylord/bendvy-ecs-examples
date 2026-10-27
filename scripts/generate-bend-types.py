@@ -11,10 +11,12 @@ rather than weakening the TypeScript boundary.
 from pathlib import Path
 import re
 import json
+import posixpath
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / 'examples/survivors'
 OUTPUT = ROOT / '.typescript/bend.d.ts'
+LOCAL_ABI_MODULES = ('offline-policy/preference.bend',)
 
 
 def split(source, separator=','):
@@ -32,7 +34,7 @@ def split(source, separator=','):
 
 
 def namespace(path):
-    return ''.join(part.capitalize() for part in path.stem.split('-'))
+    return ''.join(part.capitalize() for component in path.parts for part in component.split('-'))
 
 
 def signature_return(tail):
@@ -48,14 +50,15 @@ def signature_return(tail):
     raise ValueError(f'unsupported or multiline return signature {tail!r}')
 
 
-def generate(source_dir):
-    sources = {p.stem: p.read_text() for p in source_dir.glob('*.bend') if not p.stem.endswith(('-LAWS', '-PROOF'))}
+def generate(source_dir, local_modules=()):
+    paths = [*source_dir.glob('*.bend'), *(source_dir / path for path in local_modules)]
+    sources = {p.relative_to(source_dir).with_suffix('').as_posix(): p.read_text() for p in paths if not p.stem.endswith(('-LAWS', '-PROOF'))}
     type_names = {name: set(re.findall(r'^type\s+(\w+)', text, re.M)) for name, text in sources.items()}
     imports = {}
     for name, text in sources.items():
         imports[name] = {}
         for path, alias in re.findall(r'^import\s+(\S+)\s+as\s+(\w+)', text, re.M):
-            target = Path(path).stem
+            target = posixpath.normpath(posixpath.join(posixpath.dirname(name), path)).removesuffix('.bend')
             imports[name][alias] = target if target in sources and '@' not in path else None
 
 
@@ -228,5 +231,5 @@ def generate(source_dir):
 
 if __name__ == '__main__':
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT.write_text(generate(SOURCE))
+    OUTPUT.write_text(generate(SOURCE, LOCAL_ABI_MODULES))
     print(f'Bend host declarations: {OUTPUT.relative_to(ROOT)}')

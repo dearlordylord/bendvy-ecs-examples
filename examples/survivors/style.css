@@ -642,3 +642,22 @@ footer {
 .source-links svg { flex-shrink: 0; }
 
 .start-row-top { margin-top: 0; margin-bottom: 20px; }
+
+#stream-controls { position:fixed; z-index:20; right:16px; bottom:16px; width:min(440px,calc(100vw - 32px)); padding:14px 18px; border:1px solid #776044; border-radius:14px; background:#17151aee; box-shadow:0 8px 30px #0008; color:#e9dfc8; font-size:12px }
+.stream-heading { display:flex; justify-content:space-between; gap:12px; align-items:center }
+#stream-status { font-size:10px; color:#c6b48e }
+.stream-actions { display:flex; flex-wrap:wrap; gap:6px; margin:10px 0 }
+.stream-actions button { padding:6px 10px; font-size:11px }
+.stream-module { display:flex; gap:10px; align-items:center; font-size:10px }
+.stream-module input { min-width:0; flex:1; background:#0d0c10; color:#d9c99e; border:1px solid #514737; padding:4px }
+#stream-intention { margin:8px 0; color:#e3c981 }
+#stream-diagnostics { max-height:240px; overflow:auto; white-space:pre-wrap; font-size:10px }
+.stream-recommendation { outline:2px solid #e7c77e; box-shadow:0 0 24px #d6ae5e66; transform:translateY(-3px) }
+.stream-mode #joystick { display:none }
+
+#stream-compact { padding:2px 7px; font-size:14px; flex:none }
+#stream-controls.stream-compact { width:min(360px,calc(100vw - 32px)); padding:8px 12px }
+#stream-controls.stream-compact .stream-actions, #stream-controls.stream-compact .stream-module, #stream-controls.stream-compact details { display:none }
+@media (max-width:520px) {
+  #menu #tabs:has(a[href="./?stream=1"]) :is(button,a.menu-route) { grid-column:span 2 }
+}

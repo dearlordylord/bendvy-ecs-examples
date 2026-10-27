@@ -29,6 +29,17 @@ type RunResult = {
 }
 type CatalogCondition = { stat: string; value: number }
 const KEY = "nightfall-survivors-v1"
+const profileStores = new WeakMap<Profile, string | null>()
+export function isolatedStreamProfile(source: Profile, persist = false): Profile {
+  let profile = structuredClone(source)
+  if (persist) {
+    try {
+      profile = parseProfile(JSON.parse(localStorage.getItem(`${KEY}-stream`) ?? "null"))
+    } catch {}
+  }
+  profileStores.set(profile, persist ? `${KEY}-stream` : null)
+  return profile
+}
 
 function amount(value: number): Amount {
   if (!Number.isFinite(value) || value < 0) throw new TypeError("Expected a nonnegative finite progression amount")
@@ -252,7 +263,8 @@ export function loadProfile(): Profile {
 }
 export function saveProfile(profile: Profile): boolean {
   try {
-    localStorage.setItem(KEY, JSON.stringify(profile))
+    const store = profileStores.has(profile) ? profileStores.get(profile) : KEY
+    if (store) localStorage.setItem(store, JSON.stringify(profile))
     return true
   } catch {
     return false

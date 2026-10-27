@@ -1,0 +1,48 @@
+{
+  "d847fc3da4248ca4b373b280556b0df3883b4529": {
+    "sources": {
+      "examples/survivors/game.bend": "0f896b77389536def6bf67839d4959838874f3d873efdff255f5dd1e1f7d2499",
+      "examples/survivors/player-movement.bend": "8ecd303dddfab4d1713c97ffa9f0c6f68969364463dbae3db330d6b26a4c1f9b",
+      "examples/survivors/arena.bend": "87fa1116fac82285d6b61cf767254beb97a58672ce732f4572a80abd1bb108d5",
+      "examples/survivors/offline-policy.bend": "c7c0c4b82f9456e42a0da22907baf943f6ad0ab9682791a139adcb5fb32f4009",
+      "examples/survivors/stream-bot.bend": "e8642034bfc13d546202c18d0f618ed1d588cade19a90ee5672cd4211f5df02e",
+      "examples/survivors/browser.mts": "06f2e5d2c648737dd378fd64f23f919af4698db29b5fb8f23d1724d3c4ab737d",
+      "examples/survivors/browser-stream.mts": "16d10c6bce3278ba851dafed363f17fcb1da14bd21740c5fac4588881d5b8e9c",
+      "examples/survivors/progression.mts": "3ba029bd90e099edc716eabfd97e80a5a7de32e5c0363333a6755eac43c9e769",
+      "examples/survivors/menu-progression.bend": "27007f85078463da355db37012d1bfeff13bbcedc40c0ca7589a6c5a414b3fe8",
+      "examples/survivors/build-web.sh": "291ca420b5c3105953a6abac359f71652f01f613c5e85c1a60c38da9b1b4e068",
+      "examples/common.sh": "e7c632476ef0a8b8b8b2e362f720ccbff5f669988a7766de54d7c7783b901ae1"
+    },
+    "emitted": {
+      "dist/game.mjs": "0de9e7e1f6bad41befb9e7f6a3620fc4d52e28593bbd5a4ebdfebc68dd54b114",
+      "dist/menu-progression.mjs": "abe99f9a1d5d49a08da9b2d52befc237a15fe1c5c4738948fc628282d3bbc4c4",
+      "dist/stream-bot.mjs": "d86662812877214e9780f41fabeff13fe8f7f50d5de850d9e1196a97cca9475d",
+      "browser.mjs": "a52d15a692e75e4a45ef30999715e77746c353cfdbbc4c59668cec3a311e1629",
+      "browser-stream.mjs": "1b2770172dec3d5cd0c170300922d046309c9f101eaccd8f394e706e0f823e17",
+      "progression.mjs": "a6316510fb9a127edb9e389109f30323e8b9ebb32a00619d4e2b5ee2030b1716"
+    }
+  },
+  "1b781f5f9c67dded3ecf8ee2d20e136c2a8dd425": {
+    "sources": {
+      "examples/survivors/game.bend": "0f896b77389536def6bf67839d4959838874f3d873efdff255f5dd1e1f7d2499",
+      "examples/survivors/player-movement.bend": "8ecd303dddfab4d1713c97ffa9f0c6f68969364463dbae3db330d6b26a4c1f9b",
+      "examples/survivors/arena.bend": "87fa1116fac82285d6b61cf767254beb97a58672ce732f4572a80abd1bb108d5",
+      "examples/survivors/offline-policy.bend": "c7c0c4b82f9456e42a0da22907baf943f6ad0ab9682791a139adcb5fb32f4009",
+      "examples/survivors/stream-bot.bend": "8cebb132c116e0e5cb67dce648ebd65c2b1f2ec57bbb42598fe6c614bdf3f33d",
+      "examples/survivors/browser.mts": "06f2e5d2c648737dd378fd64f23f919af4698db29b5fb8f23d1724d3c4ab737d",
+      "examples/survivors/browser-stream.mts": "85306330f281bbe220a9b8a75440f639e9791f44bcaaec17c6847b59e91a2c42",
+      "examples/survivors/progression.mts": "3ba029bd90e099edc716eabfd97e80a5a7de32e5c0363333a6755eac43c9e769",
+      "examples/survivors/menu-progression.bend": "27007f85078463da355db37012d1bfeff13bbcedc40c0ca7589a6c5a414b3fe8",
+      "examples/survivors/build-web.sh": "291ca420b5c3105953a6abac359f71652f01f613c5e85c1a60c38da9b1b4e068",
+      "examples/common.sh": "e7c632476ef0a8b8b8b2e362f720ccbff5f669988a7766de54d7c7783b901ae1"
+    },
+    "emitted": {
+      "dist/game.mjs": "0de9e7e1f6bad41befb9e7f6a3620fc4d52e28593bbd5a4ebdfebc68dd54b114",
+      "dist/menu-progression.mjs": "abe99f9a1d5d49a08da9b2d52befc237a15fe1c5c4738948fc628282d3bbc4c4",
+      "dist/stream-bot.mjs": "de6a7bf68870e33ba75b7d1ec1f1530bbe87b5ebd801918139a27b53609412ee",
+      "browser.mjs": "a52d15a692e75e4a45ef30999715e77746c353cfdbbc4c59668cec3a311e1629",
+      "browser-stream.mjs": "23051317313a07aeff7d23e1441ced86be8d6027968a74b0b23df60988e04e86",
+      "progression.mjs": "a6316510fb9a127edb9e389109f30323e8b9ebb32a00619d4e2b5ee2030b1716"
+    }
+  }
+}

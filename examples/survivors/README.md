@@ -169,3 +169,107 @@ bash examples/survivors/check-proofs.sh
 
 These commands check native profile/UI behavior, a complete game run and Bend proofs separately.
 The replay comparison tools consume recorded observations separately.
+
+### Browser stream bot
+
+Open the normal browser game with `?stream=1`, or choose **Stream** in the menu.
+Select the usual character, stage, arcana and mode, then click **Start stream**.
+The click also enables browser audio. The stream uses the normal renderer, HUD,
+upgrade cards and adaptive music. Native headless and grid bots are unchanged.
+
+The controls provide pause/resume, stop, strategy reload and audio resume.
+Use the gear button for a compact view with status and intention; expand
+it to reach controls and diagnostics. **Player mode** returns to ordinary play.
+Upgrades wait 500 ms for advice and then display a fixed recommendation for at
+least 1500 ms before committing. Death/victory remains visible for 5 seconds and
+then starts another seeded run. The stream copies the selected player profile
+into isolated memory. It never saves to the normal profile. Add `persist=1` to
+save stream-only progression under a separate key.
+
+Operator URL options are `seed` (unsigned 32-bit seed), `advice`, `dwell` and
+`between` (integer milliseconds from 0 through 60000), and `strategy` (manifest
+URL). For example, `?stream=1&seed=982451653&dwell=2000`. These options change
+presentation and seed selection, not balance or game rules.
+
+To edit strategy without rebuilding Bend, change the default strategy or write
+a JS/TypeScript module exporting `revision`, integer `memoryVersion`, and
+`decide(observation, memory)`. The result contains `intention`, `memory` and a
+short `label`. The generated `BendABI.StreamBot.Observation` and
+`BendABI.StreamBot.Intention` types are authoritative. `stream-strategy-types.mts`
+exports the author-facing `Strategy` type. Intentions are `GoalChoice` or
+`UpgradeChoice` with a legal index, or `Default` for the Bend policy.
+Goal kinds reuse the Bend policy codes: XP `2`, chest `5`, relic `9`, and cardinal
+exploration `12` through `15`. Goal indices belong to the current request only.
+`GoalChoice` retains a goal through shared Bend routing and emergency steering.
+The current preference remains selectable in later observations. Cardinal goals
+keep their admitted endpoint; physical pickups still require collection.
+Shared routing can replan or release an unavailable or unreachable goal.
+Movement `Default` releases the preference to the autonomous Bend policy.
+Upgrade `Default` selects the recommended offer and retains the travel goal.
+Candidate identity includes `seed`, `generation` and `kind`; do not cache an index between
+requests. An active strategy failure also releases its preference, while a failed
+replacement preserves the working strategy and goal.
+Observations contain linked Bend lists, legal offers, bounded candidate goals,
+visible threats and player/build state. They never contain the ECS world.
+
+Build a strategy after an ordinary browser build has generated its Bend types:
+
+```sh
+node tools/survivors-bot/build-stream-strategy.mts \
+  examples/survivors/stream-strategy.mts \
+  examples/survivors/dist/web/stream-strategy.json
+```
+
+Strategies must use a self-contained local module graph. Nonliteral dynamic
+imports and unresolved/external imports (including remote URLs) are rejected.
+This command type-checks and bundles the complete supported dependency graph, writes
+an immutable SHA-256-named JS module, then atomically replaces its manifest.
+Click **Reload strategy** in the running page. The world continues while the
+replacement loads and runs a bounded smoke decision. A broken candidate retains
+the working strategy. An active-strategy failure visibly falls back to the
+shared Bend policy with bounded retries. Compatible versioned plain-data memory
+survives reload; a different memory version resets it visibly. A recommendation
+already being displayed finishes before a prepared replacement activates.
+
+For a hosted strategy update, publish the immutable bundled module first and its
+manifest last, then reload. Both must share an origin; a cross-origin manifest
+must permit browser CORS requests. Use HTTPS or localhost for WebCrypto hash verification, not `file:`. The runtime
+uses module Workers and hash-verified Blob module imports, so a restrictive CSP
+must allow the application's Worker script and `blob:` script imports. Strategies
+are trusted operator code; Worker isolation is not a hostile-code sandbox. A
+static server is sufficient. No Node service runs the game or the strategy.
+TypeScript is compiled by the strategy-only tool, never executed raw by browsers.
+
+Limits are 8 candidate goals, 128 visible enemies, 64 visible projectiles, 128
+visible pickups and 128 remembered pickups. Pickup discovery has its own budget,
+so dense enemy waves cannot consume its slots. Observations use the actual canvas
+viewport; remembered pickups are bounded and refreshed when revisited. Advice is requested at
+most twice per second, with one outstanding request. Candidate fetches time out
+after 3 seconds, Worker preparation after 1 second, and active decisions after
+300 ms. Manifests are limited to 8 KiB and bundled code to 256 KiB. Strategy
+memory is limited to 64 KiB, depth 12 and 8192 values; labels to 160 characters.
+Diagnostics retain the most recent 200 records. Each record identifies the event
+session/run, originating session/run/request/decision, and strategy generation
+and content hash (or manifest URL before verification). Retained advice and
+candidate failures remain attributable after run rotation or reload. Replaced Workers and Blob URLs
+are reclaimed. Old content-addressed files on the development server may be
+removed when no session still needs them.
+
+Keep the game tab visible and the device awake. Visible focus loss does
+not pause a stream, but hiding the document pauses it and requires explicit
+resume on return. There is no hidden-tab or sleeping-device uptime guarantee,
+and returning never executes accumulated catch-up ticks. Autoplay restrictions
+may require **Resume audio**. This mode does not record or broadcast video.
+
+Verify the pure production session decisions with:
+
+```sh
+node examples/survivors/check-stream-session.mts
+node examples/survivors/check-stream-observation.mts
+node --test examples/survivors/stream-strategy-values.test.mts
+```
+
+This runs Bend laws, literal scenarios and typechecked production mutations.
+Real browser session, fault and audio checks complement those laws;
+they are not implied by the proof checker. Continuous-operation reliability
+has not been qualified.
