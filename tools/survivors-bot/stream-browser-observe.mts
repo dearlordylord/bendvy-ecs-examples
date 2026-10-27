@@ -139,18 +139,49 @@ export function installStreamObservers() {
   let nodes = 0
   let contexts = 0
   let tappedMaster = false
+  type RunningEpoch =
+    | { kind: "inactive"; id: number }
+    | { kind: "running"; id: number; baseline: number; lastSampleTime: number }
   globalThis.AudioContext = class extends Original {
+    private epoch: RunningEpoch = { kind: "inactive", id: 0 }
+    private observeState() {
+      const data = document.documentElement.dataset
+      data.checkAudioState = this.state
+      data.checkAudioCurrentTime = String(this.currentTime)
+      data.checkAudioSampleRate = String(this.sampleRate)
+      if (this.state === "running" && this.epoch.kind === "inactive") {
+        this.epoch = {
+          kind: "running",
+          id: this.epoch.id + 1,
+          baseline: this.currentTime,
+          lastSampleTime: this.currentTime
+        }
+        data.checkAudioRecentPcmPeak = "0"
+      } else if (this.state !== "running" && this.epoch.kind === "running") {
+        this.epoch = { kind: "inactive", id: this.epoch.id }
+        data.checkAudioRecentPcmPeak = "0"
+      }
+      data.checkAudioEpoch = String(this.epoch.id)
+      data.checkAudioRunningBaseline = this.epoch.kind === "running" ? String(this.epoch.baseline) : ""
+    }
     constructor(options?: AudioContextOptions) {
       super(options)
       document.documentElement.dataset.checkAudioContexts = String(++contexts)
       document.addEventListener("stream-check-suspend-audio", () => {
-        void this.suspend().catch((error: unknown) => {
-          document.documentElement.dataset.checkAudioSuspendError = String(error)
-        })
+        void this.suspend()
+          .then(() => {
+            this.observeState()
+            document.documentElement.dataset.checkAudioSuspendedAt = String(this.currentTime)
+            document.documentElement.dataset.checkAudioSuspendedWallAt = String(performance.now())
+            document.documentElement.dataset.checkAudioSuspendCompleted = "true"
+          })
+          .catch((error: unknown) => {
+            document.documentElement.dataset.checkAudioSuspendError = String(error)
+          })
       })
-      this.addEventListener("statechange", () => {
-        document.documentElement.dataset.checkAudioState = this.state
-      })
+      document.addEventListener("stream-check-observe-audio", () => this.observeState())
+      this.observeState()
+      this.addEventListener("statechange", () => this.observeState())
     }
     override createGain() {
       const gain = super.createGain()
@@ -165,15 +196,36 @@ export function installStreamObservers() {
               analyser.fftSize = 256
               connect(analyser)
               const samples = new Float32Array(256)
-              const recent: { at: number; peak: number }[] = []
+              const recent: { at: number; peak: number; epoch: number }[] = []
               let observedPeak = 0
               setInterval(() => {
+                this.observeState()
                 analyser.getFloatTimeDomainData(samples)
                 const peak = samples.reduce((maximum, value) => Math.max(maximum, Math.abs(value)), 0)
                 const now = performance.now()
                 observedPeak = Math.max(observedPeak, peak)
-                recent.push({ at: now, peak })
-                while (recent[0] && recent[0].at < now - 1000) recent.shift()
+                const contextTime = this.currentTime
+                const epoch = this.epoch
+                const eligible =
+                  epoch.kind === "running" &&
+                  contextTime > epoch.lastSampleTime &&
+                  contextTime > epoch.baseline + (analyser.fftSize + 128) / this.sampleRate
+                if (eligible) {
+                  recent.push({ at: now, peak, epoch: epoch.id })
+                  document.documentElement.dataset.checkAudioEligibleSampleTime = String(contextTime)
+                  document.documentElement.dataset.checkAudioEligibleSampleEpoch = String(epoch.id)
+                  document.documentElement.dataset.checkAudioEligibleSamplePeak = String(peak)
+                }
+                if (epoch.kind === "running") epoch.lastSampleTime = contextTime
+                while (
+                  recent[0] &&
+                  (recent[0].at < now - 1000 || recent[0].epoch !== epoch.id || epoch.kind !== "running")
+                )
+                  recent.shift()
+                document.documentElement.dataset.checkAudioRecentSamples = JSON.stringify(recent)
+                document.documentElement.dataset.checkAudioFftSize = String(analyser.fftSize)
+                document.documentElement.dataset.checkAudioRawPcmPeak = String(peak)
+                document.documentElement.dataset.checkAudioSampleEligible = String(eligible)
                 document.documentElement.dataset.checkAudioPcmPeak = String(observedPeak)
                 document.documentElement.dataset.checkAudioRecentPcmPeak = String(
                   Math.max(0, ...recent.map((sample) => sample.peak))

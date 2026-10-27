@@ -129,6 +129,22 @@ async function until(page: Page, predicate: (d: Diagnostics) => boolean, timeout
   }
   throw new Error(`Condition timed out after ${timeout}ms: ${JSON.stringify(latest)}`)
 }
+const audioObservations: Record<string, string | undefined>[] = []
+async function audioObservation(page: Page) {
+  const observation = await page.evaluate((): Record<string, string | undefined> => {
+    document.dispatchEvent(new Event("stream-check-observe-audio"))
+    return {
+      ...Object.fromEntries(
+        Object.entries(document.documentElement.dataset).filter(([key]) => key.startsWith("checkAudio"))
+      ),
+      wallAt: String(performance.now()),
+      visibility: document.visibilityState,
+      status: document.querySelector("#stream-status")?.textContent ?? ""
+    }
+  })
+  audioObservations.push(observation)
+  return observation
+}
 async function report() {
   const filename = path.join(out, "report.json")
   await writeFile(
@@ -142,6 +158,7 @@ async function report() {
         sourceIdentity,
         applicationHash: application.hash,
         soakHours,
+        audioObservations,
         results,
         errors
       },
@@ -391,26 +408,39 @@ async function runBrowser(kind: BrowserType) {
         })
         await scenario(browserName, "native audio suspension and public recovery", async () => {
           await page.waitForFunction(() => Number(document.documentElement.dataset.checkAudioRecentPcmPeak) > 0.00001)
+          const before = await audioObservation(page)
           await page.evaluate(() => document.dispatchEvent(new Event("stream-check-suspend-audio")))
-          await page.waitForFunction(() =>
-            document.querySelector("#stream-status")?.textContent?.includes("audio suspended")
-          )
-          const suspended = await page.locator("#stream-status").innerText()
-          assert.equal(await page.evaluate(() => document.documentElement.dataset.checkAudioState), "suspended")
-          await page.waitForTimeout(1200)
-          const suspendedPcm = Number(
-            await page.evaluate(() => document.documentElement.dataset.checkAudioRecentPcmPeak)
-          )
-          assert(suspendedPcm < 0.00001, "Suspended audio must clear the actual rolling PCM window before recovery")
-          await page.locator("#stream-audio").click()
           await page.waitForFunction(
             () =>
-              document.querySelector("#stream-status")?.textContent?.includes("audio running") &&
-              Number(document.documentElement.dataset.checkAudioRecentPcmPeak) > 0.00001
+              document.documentElement.dataset.checkAudioSuspendCompleted === "true" &&
+              document.querySelector("#stream-status")?.textContent?.includes("audio suspended")
           )
-          assert.equal(await page.evaluate(() => document.documentElement.dataset.checkAudioContexts), "1")
-          assert.equal(await page.evaluate(() => document.documentElement.dataset.checkAudioSuspendError), undefined)
-          return { suspended, suspendedPcm, resumed: await page.locator("#stream-status").innerText() }
+          const suspended = await audioObservation(page)
+          assert.equal(suspended.checkAudioState, "suspended")
+          assert.equal(suspended.checkAudioContexts, "1")
+          await page.waitForTimeout(1200)
+          const held = await audioObservation(page)
+          assert.equal(held.checkAudioState, "suspended")
+          assert.equal(held.checkAudioContexts, "1")
+          assert.equal(
+            Number(held.checkAudioCurrentTime),
+            Number(suspended.checkAudioSuspendedAt),
+            "Native suspension must hold the context timeline after suspend resolves"
+          )
+          assert(Number(held.wallAt) - Number(suspended.checkAudioSuspendedWallAt) >= 1200)
+          await page.locator("#stream-audio").click()
+          await page.waitForFunction(
+            (previousEpoch) =>
+              document.querySelector("#stream-status")?.textContent?.includes("audio running") &&
+              document.documentElement.dataset.checkAudioState === "running" &&
+              Number(document.documentElement.dataset.checkAudioEpoch) > previousEpoch &&
+              Number(document.documentElement.dataset.checkAudioRecentPcmPeak) > 0.00001,
+            Number(before.checkAudioEpoch)
+          )
+          const resumed = await audioObservation(page)
+          assert.equal(resumed.checkAudioContexts, "1")
+          assert.equal(resumed.checkAudioSuspendError, undefined)
+          return { before, suspended, held, resumed }
         })
         await scenario(browserName, "public Settings mute and unmute", async () => {
           await page.locator("#stream-stop").click()
@@ -419,7 +449,10 @@ async function runBrowser(kind: BrowserType) {
           await page.locator("#stream-start").click()
           await until(page, (d) => d.tick > 60)
           await page.waitForTimeout(2200)
-          const muted = Number(await page.evaluate(() => document.documentElement.dataset.checkAudioRecentPcmPeak))
+          const mutedObservation = await audioObservation(page)
+          assert.equal(mutedObservation.checkAudioState, "running")
+          assert.equal(mutedObservation.checkAudioSampleEligible, "true")
+          const muted = Number(mutedObservation.checkAudioRecentPcmPeak)
           assert(muted < 0.00001, "Public mute must silence actual master PCM")
           await page.locator("#stream-stop").click()
           await page.locator('#tabs [data-tab="settings"]').click()
@@ -428,8 +461,12 @@ async function runBrowser(kind: BrowserType) {
           await page.locator("#stream-start").click()
           await page.waitForFunction(() => Number(document.documentElement.dataset.checkAudioRecentPcmPeak) > 0.00001)
           assert.equal(await page.evaluate(() => document.documentElement.dataset.checkAudioContexts), "1")
+          const unmutedObservation = await audioObservation(page)
+          assert.equal(unmutedObservation.checkAudioState, "running")
           return {
             muted,
+            mutedObservation,
+            unmutedObservation,
             unmuted: Number(await page.evaluate(() => document.documentElement.dataset.checkAudioRecentPcmPeak)),
             contexts: await page.evaluate(() => document.documentElement.dataset.checkAudioContexts)
           }
@@ -1161,6 +1198,10 @@ async function runBrowser(kind: BrowserType) {
       const observedBoundaries = await page
         .evaluate(() => ({
           failureMessageLength: Number(document.documentElement.dataset.checkWorkerFailureLength ?? "0"),
+          audioObservation: Object.fromEntries(
+            Object.entries(document.documentElement.dataset).filter(([key]) => key.startsWith("checkAudio"))
+          ),
+          audioStatus: document.querySelector("#stream-status")?.textContent,
           audioContexts: document.documentElement.dataset.checkAudioContexts,
           audioNodes: document.documentElement.dataset.checkAudioNodes,
           audioState: document.documentElement.dataset.checkAudioState,

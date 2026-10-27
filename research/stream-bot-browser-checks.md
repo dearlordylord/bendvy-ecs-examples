@@ -49,8 +49,16 @@ are not a proof of all possible event schedules.
 Run `--audio-only` with either browser or `--browser both` for the compact
 controls, actual AudioContext suspension, suspended status, public Resume audio,
 and Settings sound checkbox cases. Suspension invokes the captured native context;
-it does not fake its state. The suspended rolling PCM window must become silent
-before resuming, so cached pre-suspension samples cannot satisfy recovery.
+it does not fake its state. After native suspend resolves, the context timeline
+must remain held across a 1200 ms wall-clock interval. Suspended analyser data may
+retain nonzero history, as required by the Web Audio specification. At each native
+running transition the observer starts a new epoch. Only reads with progressing
+context time more than `(fftSize + 128) / sampleRate` beyond that epoch's baseline
+enter the rolling PCM window. Thus recovery requires fresh PCM from the actual
+application graph through the public Resume audio button. No waveform inequality,
+new context or synthetic tone is used. Receipts retain clock anchors, epoch,
+eligible samples, raw peaks, native state, context count and public status,
+including observations on failure.
 Settings are changed through the normal menu between
 runs because the running view has no sound checkbox. Muted play must produce
 silent master PCM; unmuted play and audio resume must recover nonzero PCM while
