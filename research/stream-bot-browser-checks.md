@@ -1,5 +1,13 @@
 # Browser stream verification
 
+The inline-panel harness below records historical acceptance at revision
+`1b781f5`. It queries controls in the game document and does not support the
+subsequent separate operator window. Do not run it as the current UI gate.
+Current operator verification uses the real HTTP-IP game, its popup controls,
+F2 restoration and actual headed-browser hide/show. The game document must
+contain no operator panel; explicit Pause must survive visibility changes,
+while ordinary Alt-Tab must not create a permanent Pause.
+
 The acceptance driver uses the built game in Chromium and WebKit. It copies the
 completed build into a private diagnostic snapshot and checks every file hash
 before and after copying. The source build may then change without affecting the

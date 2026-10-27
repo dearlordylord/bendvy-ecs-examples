@@ -173,13 +173,16 @@ The replay comparison tools consume recorded observations separately.
 ### Browser stream bot
 
 Open the normal browser game with `?stream=1`, or choose **Stream** in the menu.
-Select the usual character, stage, arcana and mode, then click **Start stream**.
+Select the usual character, stage, arcana and mode, then click **Start Run**.
+This opens a separate **Bot controls** window and starts the game. Allow the
+popup when prompted. The game view contains no operator panel. Press **F2**
+in the game window to open or restore controls, including before starting.
 The click also enables browser audio. The stream uses the normal renderer, HUD,
 upgrade cards and adaptive music. Native headless and grid bots are unchanged.
 
-The controls provide pause/resume, stop, strategy reload and audio resume.
-Use the gear button for a compact view with status and intention; expand
-it to reach controls and diagnostics. **Player mode** returns to ordinary play.
+The operator window provides pause/resume, stop, strategy reload, audio resume
+and diagnostics. Closing that window leaves the bot running; F2 reopens it.
+**Player mode** returns the game window to ordinary play.
 Upgrades wait 500 ms for advice and then display a fixed recommendation for at
 least 1500 ms before committing. Death/victory remains visible for 5 seconds and
 then starts another seeded run. The stream copies the selected player profile
@@ -258,10 +261,11 @@ candidate failures remain attributable after run rotation or reload. Replaced Wo
 are reclaimed. Old content-addressed files on the development server may be
 removed when no session still needs them.
 
-Keep the game tab visible and the device awake. Visible focus loss does
-not pause a stream, but hiding the document pauses it and requires explicit
-resume on return. There is no hidden-tab or sleeping-device uptime guarantee,
-and returning never executes accumulated catch-up ticks. Autoplay restrictions
+Keep the game visible for smooth playback and the device awake. Alt-Tab and
+hiding the game do not set operator Pause; returning continues the bot. An
+explicit operator Pause stays paused. Browsers may throttle hidden tabs; there
+is no hidden-tab or sleeping-device uptime guarantee. Each frame advances at
+most 100 ms of simulation after returning. Autoplay restrictions
 may require **Resume audio**. This mode does not record or broadcast video.
 
 Verify the pure production session decisions with:

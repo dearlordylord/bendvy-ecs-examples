@@ -25,7 +25,7 @@ This is a foreground browser bot session. Recording and broadcasting are outside
 9. As a viewer, I want readable death and victory transitions followed by new runs, so that the session continues unattended.
 10. As an operator, I want a simple browser entry into stream mode, so that no native executable is required.
 11. As an operator, I want deliberate start, pause, resume and stop controls, so that I can manage the bot session.
-12. As an operator, I want a compact viewing layout with accessible diagnostics, so that errors remain available without overwhelming the picture.
+12. As an operator, I want controls and diagnostics in a separate window, so that the game view contains no operator panel.
 13. As an operator, I want to choose the initial setup and seed sequence, so that a session can be reproduced or varied deliberately.
 14. As an operator, I want an isolated stream profile, so that unattended play does not overwrite my normal progression.
 15. As an operator, I want to edit JS or TypeScript strategy code, so that priorities and personality are programmable.
@@ -38,7 +38,7 @@ This is a foreground browser bot session. Recording and broadcasting are outside
 22. As an operator, I want a crashed or looping strategy to trigger visible fallback, so that it cannot freeze the interface.
 23. As an operator, I want bounded recovery and diagnostics, so that repeated errors do not create unlimited work or logs.
 24. As an operator, I want presentation timing configurable, so that the viewing pace can be adjusted without changing game mechanics.
-25. As an operator, I want explicit hidden-tab and audio-suspension status, so that I understand why play or sound has paused.
+25. As an operator, I want Alt-Tab to avoid a permanent pause, with explicit audio-suspension status and documented browser background limits.
 26. As a strategy author, I want legal upgrade choices and relevant goal candidates supplied by Bend, so that I do not duplicate game rules.
 27. As a strategy author, I want visible threats and remembered XP, so that decisions use player-like knowledge.
 28. As a strategy author, I want risk, build and collection priorities adjustable in code, so that different styles are possible.
@@ -70,9 +70,9 @@ This is a foreground browser bot session. Recording and broadcasting are outside
 - Serve strategies as browser-compatible JS modules under documented origin, CORS and CSP constraints. TypeScript requires strategy-only transpilation and checking before loading. Offer explicit reload; optional local development notifications can automate it after complete writes. Version the complete strategy dependency graph so dependency edits cannot silently reuse stale imports. No permanent accumulating import cache, mandatory embedded editor or unrestricted browser filesystem assumption.
 - The hosted session runs on static browser assets without a persistent Node service. Local JS/TS development tooling is allowed for strategy builds only and must not become a native headless controller. Strategy edits do not rebuild Bend. Document the local edit/reload workflow and the hosted module update workflow separately.
 - Start audio through an explicit user gesture and reuse the existing audio engine/context. Pause/resume/mute without duplicate contexts or effects across reloads and run rotation. Report suspended audio with an actionable resume control rather than promising autoplay-policy bypass.
-- Define visibility separately from focus: a visible window may lose focus without pausing stream mode. On a hidden document, pause stream progression and accumulated presentation time explicitly; return visibly paused for operator resume. Do not accumulate unbounded catch-up ticks on return. Normal player-mode focus behaviour remains unchanged. Document foreground and power requirements; device sleep and hidden-tab execution are unsupported uptime conditions.
+- Focus and visibility changes must not issue operator Pause in stream mode. Explicit operator Pause remains authoritative across hide/show. Keep the existing 100 ms simulation-frame clamp on return. Normal player-mode focus behaviour remains unchanged. Browser background throttling and device sleep prevent an uptime guarantee.
 - Own automatic end-of-run display, seed progression and next-run startup in the session. Treat death/victory as expected. Expose genuine simulation failures and deliberately reset or stop rather than silently continuing corrupted state. Isolate stream progression from the normal player profile; persistence of stream-only progression is explicit configuration.
-- Show compact intention, strategy revision, run identity, active/reloading/fallback/paused status and FPS/TPS. Keep errors and bounded decision/reload records accessible, including source identity and why fallback occurred. Do not invent strategy explanations. Stop closes owned Workers and scheduling/audio activity without affecting another tab.
+- Show intention, strategy revision, run identity, active/reloading/fallback/paused status and FPS/TPS in a separate operator window, opened through a user gesture and reopened with F2. Never overlay its panel on the game. Keep errors and bounded decision/reload records accessible, including source identity and why fallback occurred. Do not invent strategy explanations. Stop closes owned Workers and scheduling/audio activity without affecting another tab.
 
 ## Testing Decisions
 
@@ -82,7 +82,7 @@ This is a foreground browser bot session. Recording and broadcasting are outside
 - Use browser automation and targeted JS diagnostics where useful for the real Worker, module loading and UI boundaries. Prefer existing browser/session seams and Bend scheduler/driver fixtures. Assert external behaviour rather than function names or internal Worker counts. Include Chromium and WebKit coverage for the operator's Mac browser, documenting actual tested versions and any limitations.
 - Exercise initial load errors, invalid candidates, dependency-only edits, rapid saves, incompatible memory, candidate smoke infinite loops, active decision loops/crashes, malformed replies and delayed replies after pause/reload/new run. A bad candidate leaves a healthy active strategy working; an active failure yields fallback while frames and controls remain responsive.
 - Verify physical XP collection, persistent goals and emergency steering while advice is delayed. Inspect observation bounds and knowledge restrictions rather than assuming a bounded list cannot leak hidden information.
-- Pause during advice, frozen recommendation dwell and between-run display. Verify no commit or new run while paused, remaining dwell on resume and rejection of pre-pause replies. Verify visibility hide/show, visible blur, audio suspension/resume and no unbounded catch-up. Exercise actual music/effects, mute and repeated run rotation without duplicated effects or profile corruption.
+- Pause during advice, frozen recommendation dwell and between-run display. Verify no commit or new run while paused, remaining dwell on resume and rejection of pre-pause replies. Verify visibility hide/show introduces no permanent pause, explicit operator Pause survives hide/show, and visible blur, audio suspension/resume and bounded catch-up remain correct. Exercise actual music/effects, mute and repeated run rotation without duplicated effects or profile corruption.
 - Stop during pending advice, candidate preparation and between-run display. Verify that later replies cannot commit choices, restart runs or resume audio. Restart through public controls with a fresh session identity. Test reload during frozen recommendation dwell, including deferred activation and an invalidated offer.
 - Verify ordinary browser player controls, focus handling, audio and normal-profile persistence after leaving stream mode.
 - Preserve native headless and grid checks through existing entry points. If shared policy changes, compare deterministic actions/memory and gameplay observations at fixed seeds before and after. Verify native headless still runs without Node/Python and presentation waits. Summary parity alone is not proof of full-state equality.
@@ -102,6 +102,8 @@ This is a foreground browser bot session. Recording and broadcasting are outside
 - Restoring full-world serialization or solving unrelated build-system and performance issues.
 
 ## Further Notes
+
+- Post-merge operator feedback requires separate controls, HTTP-IP strategy loading and no forced Pause on Alt-Tab. These corrections supersede the original inline-panel and manual-resume-on-visibility decisions.
 
 - The user explicitly selected a real stream session as the acceptance surface, then changed presentation from native to the normal browser game. This specification supersedes the earlier native/Node-sidecar proposal. No second approval of the same session seam is required.
 - Applying `to-spec`: this is a specification in an isolated worktree, not a runtime implementation or deployment.
