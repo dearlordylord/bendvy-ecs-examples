@@ -225,7 +225,11 @@ Run `--stop-frozen-only --browser both` for the bounded invalidated-offer case.
 The ordinary game must reach an actual accepted frozen upgrade recommendation
 within a bounded 15-minute arrival wait. The earlier 180-second attempt reached
 only 40 simulation seconds under machine load, before an offer arrived; this
-arrival budget does not alter any dwell or Stop assertion.
+arrival budget does not alter any dwell or Stop assertion. Focused setup also
+allows up to 15 minutes each for the shipped and fixture strategies to activate
+through actual automatic recovery attempts. Production preparation remains
+limited to 1000 ms per attempt; this checks eventual readiness within the bounded
+setup window, not first-attempt latency.
 During its configured 10-second dwell, a real replacement Worker must become
 candidate-ready while activation remains deferred. Public Stop must precede the
 commit. The check observes the full dwell plus a margin after Stop: no offer

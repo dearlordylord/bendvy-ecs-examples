@@ -425,13 +425,13 @@ async function runBrowser(kind: BrowserType) {
         const live = await until(
           page,
           (d) => d.revision.includes("collector-v1") && d.logs.some((log) => log.event === "advice-accepted"),
-          30000
+          stopFrozenOnly ? 900000 : 30000
         )
         return { live, sourceIdentity }
       })
       await page.locator("#stream-strategy").fill(fixture.manifest)
       await page.locator("#stream-reload").click()
-      await until(page, (d) => d.revision.includes(initialHash.slice(0, 12)))
+      await until(page, (d) => d.revision.includes(initialHash.slice(0, 12)), stopFrozenOnly ? 900000 : 30000)
       if (stopFrozenOnly) {
         await scenario(browserName, "Stop invalidates frozen offer and prepared replacement", async () => {
           const dwellMs = 10000
