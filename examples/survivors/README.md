@@ -178,7 +178,7 @@ The click also enables browser audio. The stream uses the normal renderer, HUD,
 upgrade cards and adaptive music. Native headless and grid bots are unchanged.
 
 The controls provide pause/resume, stop, strategy reload and audio resume.
-Use the gear button for a compact capture view with status and intention; expand
+Use the gear button for a compact view with status and intention; expand
 it to reach controls and diagnostics. **Player mode** returns to ordinary play.
 Upgrades wait 500 ms for advice and then display a fixed recommendation for at
 least 1500 ms before committing. Death/victory remains visible for 5 seconds and
@@ -255,13 +255,11 @@ candidate failures remain attributable after run rotation or reload. Replaced Wo
 are reclaimed. Old content-addressed files on the development server may be
 removed when no session still needs them.
 
-Keep the recording tab visible and the device awake. Visible focus loss does
+Keep the game tab visible and the device awake. Visible focus loss does
 not pause a stream, but hiding the document pauses it and requires explicit
 resume on return. There is no hidden-tab or sleeping-device uptime guarantee,
 and returning never executes accumulated catch-up ticks. Autoplay restrictions
-may require **Resume audio**. OBS/encoder configuration is external to the game.
-Do not call the mode 24/7-qualified until the recorded 24-hour foreground soak
-has passed for the specific browser/setup.
+may require **Resume audio**. This mode does not record or broadcast video.
 
 Verify the pure production session decisions with:
 
@@ -273,5 +271,6 @@ node --test tools/survivors-bot/build-stream-strategy.test.mts
 ```
 
 This runs Bend laws, literal scenarios and typechecked production mutations.
-Real browser session/fault checks and a 24-hour soak complement those laws;
-they are not implied by the proof checker.
+Real browser session, fault and audio checks complement those laws;
+they are not implied by the proof checker. Continuous-operation reliability
+has not been qualified.

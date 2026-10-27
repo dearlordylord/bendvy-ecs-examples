@@ -1,5 +1,12 @@
 import assert from "node:assert/strict"
-import { boundedGoalContrast, validatedPositions, safeNatural, arenaCoordinate, verifyGoalBoundSources, type GoalTrack } from "./stream-goal-capture.mts"
+import {
+  boundedGoalContrast,
+  validatedPositions,
+  safeNatural,
+  arenaCoordinate,
+  verifyGoalBoundSources,
+  type GoalTrack
+} from "./stream-goal-capture.mts"
 import { appendFile, mkdir, readFile, rename, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { performance } from "node:perf_hooks"
@@ -235,8 +242,11 @@ async function runBrowser(kind: BrowserType) {
             const hash = fixture.publish(goalStrategySource(direction))
             url.searchParams.set("strategy", fixture.manifest)
             await page.goto(url.href)
-            assert.equal(await page.evaluate((key) => localStorage.getItem(key), profileKey), null,
-              "Goal check requires fresh isolated default profile on each navigation")
+            assert.equal(
+              await page.evaluate((key) => localStorage.getItem(key), profileKey),
+              null,
+              "Goal check requires fresh isolated default profile on each navigation"
+            )
             await page.locator("#stream-start").click()
             const accepted = await until(page, (d) =>
               d.logs.some(
@@ -255,15 +265,27 @@ async function runBrowser(kind: BrowserType) {
               await page.evaluate(() => document.documentElement.dataset.checkGoalInputs ?? "[]")
             )
             assert(Array.isArray(inputs))
-            for (const field of ["session", "run", "generation", "request", "decision", "tick", "originSession", "originRun"]) {
+            for (const field of [
+              "session",
+              "run",
+              "generation",
+              "request",
+              "decision",
+              "tick",
+              "originSession",
+              "originRun"
+            ]) {
               safeNatural(number(Reflect.get(decision, field), field), field)
             }
             assert.equal(decision.session, decision.originSession)
             assert.equal(decision.run, decision.originRun)
             const matching = inputs.map(record).filter((input) => {
               const identity = record(input.identity)
-              return ["session", "run", "generation", "request", "decision"].every((field) =>
-                identity[field] === Reflect.get(decision, field)) && identity.phase === 0
+              return (
+                ["session", "run", "generation", "request", "decision"].every(
+                  (field) => identity[field] === Reflect.get(decision, field)
+                ) && identity.phase === 0
+              )
             })
             assert.equal(matching.length, 1, "Accepted goal requires one exact complete supplied identity")
             const supplied = matching[0]
@@ -301,11 +323,19 @@ async function runBrowser(kind: BrowserType) {
               await page.evaluate(() => document.documentElement.dataset.checkGoalPositions ?? "[]")
             )
             assert(Array.isArray(trajectory))
-            await writeFile(path.join(out, `${browserName}-goal-${direction}-raw-trajectory.json`),
-              JSON.stringify(trajectory, null, 2))
-            const positions = validatedPositions(trajectory.map(record).map((point) => ({
-              tick: number(point.tick, "point tick"), x: number(point.x, "point x"), y: number(point.y, "point y")
-            })))
+            await writeFile(
+              path.join(out, `${browserName}-goal-${direction}-raw-trajectory.json`),
+              JSON.stringify(trajectory, null, 2)
+            )
+            const positions = validatedPositions(
+              trajectory
+                .map(record)
+                .map((point) => ({
+                  tick: number(point.tick, "point tick"),
+                  x: number(point.x, "point x"),
+                  y: number(point.y, "point y")
+                }))
+            )
             const terminal = await diagnostics(page)
             assert.equal(terminal.session, decision.session, "Session continuity through capture")
             assert.equal(terminal.run, decision.run, "Run continuity through capture")
@@ -317,10 +347,14 @@ async function runBrowser(kind: BrowserType) {
               assert(log.tick >= previousLogTick && log.tick <= terminal.tick, "Journal tick continuity")
               previousLogTick = log.tick
             }
-            assert(terminal.logs.every((log) => log.session === decision.session && log.run === decision.run),
-              "Captured logs must retain one actual run")
-            await writeFile(path.join(out, `${browserName}-goal-${direction}-journal.json`),
-              JSON.stringify({ decision, supplied, terminal }, null, 2))
+            assert(
+              terminal.logs.every((log) => log.session === decision.session && log.run === decision.run),
+              "Captured logs must retain one actual run"
+            )
+            await writeFile(
+              path.join(out, `${browserName}-goal-${direction}-journal.json`),
+              JSON.stringify({ decision, supplied, terminal }, null, 2)
+            )
             await writeFile(
               path.join(out, `${browserName}-goal-${direction}-trajectory.json`),
               JSON.stringify(positions, null, 2)
@@ -369,7 +403,10 @@ async function runBrowser(kind: BrowserType) {
           assert(east && west)
           const contrast = boundedGoalContrast(east, west)
           await writeFile(path.join(out, `${browserName}-goal-contrast.json`), JSON.stringify(contrast, null, 2))
-          assert(contrast.spatialPass, "SPATIAL: conservative goal direction, approach and separation margins must all be positive")
+          assert(
+            contrast.spatialPass,
+            "SPATIAL: conservative goal direction, approach and separation margins must all be positive"
+          )
           return contrast
         })
         return

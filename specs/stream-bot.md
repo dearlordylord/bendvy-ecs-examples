@@ -1,6 +1,6 @@
 ## Problem Statement
 
-The mechanics-test bots make decisions immediately and are designed for repeatable simulation, not for people watching a show. The operator wants a real continuous stream session: readable decisions, normal game graphics and sound, automatic new runs, and strategy code that can change while a run continues.
+The mechanics-test bots make decisions immediately and are designed for repeatable simulation. The operator wants to watch a bot in the normal browser game: readable decisions, normal graphics and sound, automatic new runs, and strategy code that can change while a run continues.
 
 The requested presentation is the existing browser game, not the native window. Native headless bots must remain available for mechanics testing without JavaScript or Python controllers and without presentation delays.
 
@@ -10,12 +10,12 @@ Add an opt-in browser stream session using the normal game renderer, menus, HUD 
 
 Viewers see considered upgrades and stable goals. The operator can edit and reload strategy code without restarting the world. Invalid edits preserve the working strategy; active strategy failures visibly fall back to Bend. Death and victory lead to readable transitions and further runs.
 
-This is a foreground browser session suitable for capture by external streaming software. It is not a broadcast service or a promise that browsers will keep rendering a hidden tab or a sleeping device.
+This is a foreground browser bot session. Recording and broadcasting are outside this task. Hidden tabs and sleeping devices do not have an uptime guarantee.
 
 ## User Stories
 
 1. As a viewer, I want the normal browser graphics and HUD, so that the stream looks like the game people can play.
-2. As a viewer, I want normal music and sound effects, so that the session is suitable for watching and recording.
+2. As a viewer, I want normal music and sound effects while watching the bot play.
 3. As a viewer, I want upgrade offers to remain visible before confirmation, so that I can read them.
 4. As a viewer, I want the selected recommendation highlighted before it is applied, so that I can follow the decision.
 5. As a viewer, I want a concise current intention, so that the bot's movement is understandable.
@@ -24,8 +24,8 @@ This is a foreground browser session suitable for capture by external streaming 
 8. As a viewer, I want physical XP collection, so that the bot obeys the same collection rules as a player.
 9. As a viewer, I want readable death and victory transitions followed by new runs, so that the session continues unattended.
 10. As an operator, I want a simple browser entry into stream mode, so that no native executable is required.
-11. As an operator, I want deliberate start, pause, resume and stop controls, so that I can manage a recording.
-12. As an operator, I want a clean recording view with accessible diagnostics, so that errors remain available without overwhelming the picture.
+11. As an operator, I want deliberate start, pause, resume and stop controls, so that I can manage the bot session.
+12. As an operator, I want a compact viewing layout with accessible diagnostics, so that errors remain available without overwhelming the picture.
 13. As an operator, I want to choose the initial setup and seed sequence, so that a session can be reproduced or varied deliberately.
 14. As an operator, I want an isolated stream profile, so that unattended play does not overwrite my normal progression.
 15. As an operator, I want to edit JS or TypeScript strategy code, so that priorities and personality are programmable.
@@ -38,7 +38,7 @@ This is a foreground browser session suitable for capture by external streaming 
 22. As an operator, I want a crashed or looping strategy to trigger visible fallback, so that it cannot freeze the interface.
 23. As an operator, I want bounded recovery and diagnostics, so that repeated errors do not create unlimited work or logs.
 24. As an operator, I want presentation timing configurable, so that the viewing pace can be adjusted without changing game mechanics.
-25. As an operator, I want explicit hidden-tab and audio-suspension status, so that a stalled recording is not mistaken for normal play.
+25. As an operator, I want explicit hidden-tab and audio-suspension status, so that I understand why play or sound has paused.
 26. As a strategy author, I want legal upgrade choices and relevant goal candidates supplied by Bend, so that I do not duplicate game rules.
 27. As a strategy author, I want visible threats and remembered XP, so that decisions use player-like knowledge.
 28. As a strategy author, I want risk, build and collection priorities adjustable in code, so that different styles are possible.
@@ -46,10 +46,10 @@ This is a foreground browser session suitable for capture by external streaming 
 30. As a strategy author, I want explicit execution and payload limits, so that I know the supported operating envelope.
 31. As a maintainer, I want obsolete replies rejected, so that old runs or strategy generations cannot influence current play.
 32. As a maintainer, I want presentation clocks separate from simulation ticks, so that paused upgrade phases still finish correctly.
-33. As a maintainer, I want decisions and errors attributable to run and strategy revisions, so that recordings can be investigated.
+33. As a maintainer, I want decisions and errors attributable to run and strategy revisions, so that bot behavior can be investigated.
 34. As a mechanics-test user, I want native headless bots unchanged and free of browser presentation waits, so that testing remains fast and repeatable.
 35. As a mechanics-test user, I want existing native visible and parallel-grid modes preserved, so that the new mode does not remove useful tools.
-36. As a maintainer, I want actual browser-session and long-running evidence, so that unit tests are not mistaken for stream reliability.
+36. As a maintainer, I want actual browser-session evidence alongside the Bend laws, so that the feature is checked through its real interface.
 
 ## Implementation Decisions
 
@@ -70,7 +70,7 @@ This is a foreground browser session suitable for capture by external streaming 
 - Serve strategies as browser-compatible JS modules under documented origin, CORS and CSP constraints. TypeScript requires strategy-only transpilation and checking before loading. Offer explicit reload; optional local development notifications can automate it after complete writes. Version the complete strategy dependency graph so dependency edits cannot silently reuse stale imports. No permanent accumulating import cache, mandatory embedded editor or unrestricted browser filesystem assumption.
 - The hosted session runs on static browser assets without a persistent Node service. Local JS/TS development tooling is allowed for strategy builds only and must not become a native headless controller. Strategy edits do not rebuild Bend. Document the local edit/reload workflow and the hosted module update workflow separately.
 - Start audio through an explicit user gesture and reuse the existing audio engine/context. Pause/resume/mute without duplicate contexts or effects across reloads and run rotation. Report suspended audio with an actionable resume control rather than promising autoplay-policy bypass.
-- Define visibility separately from focus: a visible capture window may lose focus without pausing stream mode. On a hidden document, pause stream progression and accumulated presentation time explicitly; return visibly paused for operator resume. Do not accumulate unbounded catch-up ticks on return. Normal player-mode focus behaviour remains unchanged. Document foreground, power and capture requirements; device sleep and hidden-tab execution are unsupported uptime conditions.
+- Define visibility separately from focus: a visible window may lose focus without pausing stream mode. On a hidden document, pause stream progression and accumulated presentation time explicitly; return visibly paused for operator resume. Do not accumulate unbounded catch-up ticks on return. Normal player-mode focus behaviour remains unchanged. Document foreground and power requirements; device sleep and hidden-tab execution are unsupported uptime conditions.
 - Own automatic end-of-run display, seed progression and next-run startup in the session. Treat death/victory as expected. Expose genuine simulation failures and deliberately reset or stop rather than silently continuing corrupted state. Isolate stream progression from the normal player profile; persistence of stream-only progression is explicit configuration.
 - Show compact intention, strategy revision, run identity, active/reloading/fallback/paused status and FPS/TPS. Keep errors and bounded decision/reload records accessible, including source identity and why fallback occurred. Do not invent strategy explanations. Stop closes owned Workers and scheduling/audio activity without affecting another tab.
 
@@ -86,14 +86,15 @@ This is a foreground browser session suitable for capture by external streaming 
 - Stop during pending advice, candidate preparation and between-run display. Verify that later replies cannot commit choices, restart runs or resume audio. Restart through public controls with a fresh session identity. Test reload during frozen recommendation dwell, including deferred activation and an invalidated offer.
 - Verify ordinary browser player controls, focus handling, audio and normal-profile persistence after leaving stream mode.
 - Preserve native headless and grid checks through existing entry points. If shared policy changes, compare deterministic actions/memory and gameplay observations at fixed seeds before and after. Verify native headless still runs without Node/Python and presentation waits. Summary parity alone is not proof of full-state equality.
-- Separate the first working slice from 24/7 qualification. Before claiming readiness, run a real 24-hour foreground browser session with multiple new runs, successful/failed reloads and active-strategy recovery. Set responsiveness and resource-growth limits before the soak. Record source/browser/strategy identities, capture setup, frame/tick progress, memory, queues/log bounds, recovery counts and failures. The result qualifies that configuration only; shorter diagnostics do not replace it.
+- Use bounded functional browser checks for real decisions, reloads, recovery, lifecycle and audio. Preserve source/browser/strategy identities and failures. A 24-hour session is not an acceptance requirement and must not be started for this task. Do not claim that short functional checks establish continuous-operation reliability.
 - No new headless speed campaign belongs here. Presentation timing deliberately differs from mechanics-test throughput.
 
 ## Out of Scope
 
 - A native stream window, Node strategy service, Python controller, or replacing native headless/grid modes.
-- Changing balance, combat, XP or multiplayer rules to make recordings look better.
-- Multiplayer streaming, chat integration, Twitch/YouTube broadcasting infrastructure or public deployment.
+- Recording, video encoding, broadcasting, or configuring external streaming software.
+- Changing balance, combat, XP or multiplayer rules for presentation.
+- Multiplayer streaming, chat integration, Twitch/YouTube infrastructure or public deployment.
 - Hidden-tab, minimized-window or sleeping-device uptime guarantees.
 - Training, automatic retrospective learning, paid classifiers, or a validated human-behaviour model.
 - Shipping other language adapters, a general mod sandbox or a mandatory embedded editor.
@@ -104,7 +105,8 @@ This is a foreground browser session suitable for capture by external streaming 
 
 - The user explicitly selected a real stream session as the acceptance surface, then changed presentation from native to the normal browser game. This specification supersedes the earlier native/Node-sidecar proposal. No second approval of the same session seam is required.
 - Applying `to-spec`: this is a specification in an isolated worktree, not a runtime implementation or deployment.
-- Earlier Astra review identified useful requirements retained here: separate advice cutoff from recommendation dwell, candidate from active-strategy failures, operator from upgrade pause, and the first slice from 24/7 qualification. Its native transport recommendation no longer applies to this browser design. A second Astra review covered the browser revision; explicit frozen-dwell reload, stop/restart and ordinary-browser regression checks address its findings.
+- The user clarified that recording is not requested and a 24-hour run must not be started now. This overrides the earlier inferred recording and long-run acceptance requirements. The required feature is an observable browser bot with replaceable strategy code.
+- Earlier Astra review identified useful requirements retained here: separate advice cutoff from recommendation dwell, candidate from active-strategy failures, and operator from upgrade pause. Its native transport and long-run qualification recommendations do not define this task's acceptance. A second Astra review covered the browser revision; explicit frozen-dwell reload, stop/restart and ordinary-browser regression checks address its findings.
 - Historical options research: https://github.com/dearlordylord/bendvy-ecs-examples/blob/master/research/stream-bot-policy-options.md
 - Typed-output integration: https://github.com/dearlordylord/bendvy-ecs-examples/issues/18
 - Export tooling: https://github.com/dearlordylord/bendvy-ecs-examples/issues/14

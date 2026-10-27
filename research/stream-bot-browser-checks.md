@@ -51,7 +51,9 @@ controls, actual AudioContext suspension, suspended status, public Resume audio,
 and Settings sound checkbox cases. Suspension invokes the captured native context;
 it does not fake its state. After native suspend resolves, the context timeline
 must remain held across a 1200 ms wall-clock interval. Suspended analyser data may
-retain nonzero history, as required by the Web Audio specification. At each native
+retain nonzero history, as required by the
+[Web Audio suspension semantics](https://www.w3.org/TR/webaudio-1.0/#dom-audiocontext-suspend).
+At each native
 running transition the observer starts a new epoch. Only reads with progressing
 context time more than `(fftSize + 128) / sampleRate` beyond that epoch's baseline
 enter the rolling PCM window. Thus recovery requires fresh PCM from the actual
@@ -64,6 +66,30 @@ runs because the running view has no sound checkbox. Muted play must produce
 silent master PCM; unmuted play and audio resume must recover nonzero PCM while
 reusing one context. This check changes the ordinary sound preference through its
 supported public control and verifies bot play preserves the resulting profile.
+
+## Bend navigation checks
+
+The navigation gate requires Bend 2.0.39, Node.js 24.20 or newer, coreutils
+`timeout` or `gtimeout`, and the matching compiler source checkout. Prepare that
+checkout separately from the examples:
+
+```sh
+git clone https://github.com/bendlang/bend.git /tmp/bend-stream-verifier
+git -C /tmp/bend-stream-verifier checkout a3efe8a3801f423827424227172eed9802c5e6cb
+BEND_SOURCE_ROOT=/tmp/bend-stream-verifier \
+  node --experimental-transform-types --stack-size=8192 \
+  examples/survivors/check-stream-goal.mts
+```
+
+The gate checks the complete source with the installed compiler, rejects nine
+type-correct production mutants at their named laws, and checks all 82 navigation
+laws with the kernel. Each child has a 10-second CPU limit and 60-second wall
+limit. Selected-root checking retains the complete checked compiler book and its
+original recursive-group ordering. It checks the named laws, rather than claiming
+a kernel verdict for every imported game function. Receipts bind the sources,
+checked types, proofs, toolchain and emitted kernel artifacts. Existing routing
+and steering implementations remain inherited dependencies; the laws constrain
+their use, not their mathematical correctness.
 
 ## External goal navigation
 
@@ -123,9 +149,11 @@ the immutable `d847fc3` build accepts both cardinal intentions but fails this
 physical navigation gate. That build cannot qualify external strategy control;
 its interrupted long soak is not transferable to a corrected runtime.
 
-## Foreground soak
+## Optional future endurance diagnostics
 
-Run a separate long session after the short acceptance checks pass:
+The current task uses bounded functional checks. The user explicitly excluded a
+24-hour run and recording. Do not start the following optional endurance tool for
+this task. It remains available for a separately requested investigation:
 
 ```sh
 node tools/survivors-bot/stream-browser-check.mts \
