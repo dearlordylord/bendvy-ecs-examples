@@ -1,5 +1,6 @@
 import { object, text, number, errorMessage } from "./host-values.mts"
 import { decision } from "./stream-strategy-values.mts"
+import { strategyHash } from "./stream-hash.mts"
 import type { Decision, RequestIdentity, WorkerInput } from "./stream-strategy-types.mts"
 async function body(response: Response, limit: number): Promise<Uint8Array<ArrayBuffer>> {
   const length = Number(response.headers.get("content-length") ?? 0)
@@ -117,9 +118,7 @@ export class StreamStrategies {
       if (!bundle.ok) throw Error(`Strategy bundle HTTP ${bundle.status}`)
       const bytes = await body(bundle, 262144)
       if (bytes.byteLength > 262144) throw Error("Strategy bundle exceeds 256 KiB")
-      const hash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))]
-        .map((v) => v.toString(16).padStart(2, "0"))
-        .join("")
+      const hash = strategyHash(bytes)
       if (hash !== revision) throw Error("Strategy bundle content does not match manifest revision")
       if (!this.alive || generation !== this.generation) return
       loadingRevision = revision

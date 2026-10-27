@@ -7,7 +7,7 @@
   },
   "scripts": {
     "typecheck": "npm run generate:types && tsc --noEmit && tsc -p examples/survivors/tsconfig.browser.json --noEmit && tsc -p tsconfig.bend-abi.json",
-    "build:browser": "npm run generate:types && tsc -p examples/survivors/tsconfig.browser.json && esbuild examples/survivors/cbor.mts --bundle --format=esm --platform=browser --outfile=examples/survivors/dist/typescript-browser/cbor.mjs",
+    "build:browser": "npm run generate:types && tsc -p examples/survivors/tsconfig.browser.json && esbuild examples/survivors/cbor.mts examples/survivors/stream-hash.mts --bundle --format=esm --platform=browser --outdir=examples/survivors/dist/typescript-browser --out-extension:.js=.mjs",
     "lint": "oxlint --deny-warnings",
     "format": "dprint fmt",
     "check:format": "dprint check",
@@ -27,6 +27,7 @@
     "typescript-compiler-api": "npm:typescript@6.0.2"
   },
   "dependencies": {
+    "@noble/hashes": "2.4.0",
     "cborg": "6.1.5"
   }
 }

@@ -233,7 +233,10 @@ already being displayed finishes before a prepared replacement activates.
 
 For a hosted strategy update, publish the immutable bundled module first and its
 manifest last, then reload. Both must share an origin; a cross-origin manifest
-must permit browser CORS requests. Use HTTPS or localhost for WebCrypto hash verification, not `file:`. The runtime
+must permit browser CORS requests. Serve over HTTP or HTTPS, not `file:`.
+Strategy SHA-256 verification uses the pinned portable `@noble/hashes` implementation,
+so local Docker IP addresses do not require WebCrypto or browser security flags.
+HTTPS remains necessary for transport authenticity on untrusted networks. The runtime
 uses module Workers and hash-verified Blob module imports, so a restrictive CSP
 must allow the application's Worker script and `blob:` script imports. Strategies
 are trusted operator code; Worker isolation is not a hostile-code sandbox. A

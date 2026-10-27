@@ -41,7 +41,7 @@ bash "$example_repo/tools/iroh-transport/build.sh" "$staging_dir/public/iroh"
 python3 "$example_repo/scripts/generate-bend-types.py"
 "$NODE" "$example_repo/tools/survivors-bot/build-stream-strategy.mts" "$app_dir/stream-strategy.mts" "$staging_dir/public/stream-strategy.json"
 "$NODE" "$example_repo/node_modules/typescript/bin/tsc" -p "$app_dir/tsconfig.browser.json" --outDir "$staging_dir/public"
-"$example_repo/node_modules/.bin/esbuild" "$app_dir/cbor.mts" --bundle --format=esm --platform=browser --outfile="$staging_dir/public/cbor.mjs"
+"$example_repo/node_modules/.bin/esbuild" "$app_dir/cbor.mts" "$app_dir/stream-hash.mts" --bundle --format=esm --platform=browser --outdir="$staging_dir/public" --out-extension:.js=.mjs
 for asset in style.css menu-a.css menu-moon.css coop.css; do
   cp "$app_dir/$asset" "$staging_dir/public/$asset"
 done
