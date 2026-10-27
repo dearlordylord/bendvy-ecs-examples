@@ -51,6 +51,12 @@ capture protocol, audio freshness and official-kernel gate.
 
 ## Limits
 
+An additional focused Stop-during-frozen-offer check remains unqualified. Attempts
+under machine contention failed during setup, before the target lifecycle
+assertions ran. The test requires an actual accepted offer and prepared replacement;
+no state injection or production timeout changes substitute for those conditions.
+The PR records this pending result separately from the passing functional suite.
+
 Historical real hide/show and automatic run transitions exercise unchanged
 lifecycle code. The final 40-case run does not repeat every historical transition.
 Victory shares the death lifecycle path and is covered by source inspection and
