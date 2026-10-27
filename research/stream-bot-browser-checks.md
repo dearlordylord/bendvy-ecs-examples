@@ -218,3 +218,17 @@ Native headless/grid compatibility, Bend proof/mutation results, complete
 visibility lifecycle coverage and source-level observation bounds remain separate
 acceptance evidence. Do not infer those properties from screenshots or a green
 browser report.
+
+## Stop during a frozen offer
+
+Run `--stop-frozen-only --browser both` for the bounded invalidated-offer case.
+The ordinary game must reach an actual accepted frozen upgrade recommendation.
+During its configured 10-second dwell, a real replacement Worker must become
+candidate-ready while activation remains deferred. Public Stop must precede the
+commit. The check observes the full dwell plus a margin after Stop: no offer
+commit, candidate activation, automatic restart, Canvas tick advancement, new
+sound nodes or fresh graph PCM may return. Silence is measured after the rolling
+window clears, on the same running context with eligible progressing-clock reads.
+Finally, public Start must create a fresh session and run with no old event
+identities. Raw preparation and periodic hold receipts survive failures. This is
+a focused functional check; it starts no endurance session or recording.
