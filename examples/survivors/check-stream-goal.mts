@@ -1,8 +1,3 @@
-// Requires Node24, installed Bend2.0.39 and its already-built official BendTT kernel cache.
-// From the repository root:
-// git clone --depth 1 --branch v2.0.39 https://github.com/bendlang/bend.git /tmp/bend-source-2.0.39
-// BEND_SOURCE_ROOT=/tmp/bend-source-2.0.39 STREAM_GOAL_KEEP_WORKSPACE=1 node --experimental-strip-types examples/survivors/check-stream-goal.mts
-// --elaborator-only skips kernel qualification; STREAM_GOAL_CPU optionally pins a Linux CPU.
 import assert from "node:assert/strict"
 import { createHash } from "node:crypto"
 import { spawnSync } from "node:child_process"
