@@ -430,8 +430,39 @@ async function runBrowser(kind: BrowserType) {
         return { live, sourceIdentity }
       })
       await page.locator("#stream-strategy").fill(fixture.manifest)
-      await page.locator("#stream-reload").click()
-      await until(page, (d) => d.revision.includes(initialHash.slice(0, 12)), stopFrozenOnly ? 900000 : 30000)
+      if (stopFrozenOnly) {
+        const setupStarted = performance.now()
+        const attempts: { attempt: number; before: Diagnostics; after: Diagnostics; requestedAtMs: number }[] = []
+        let activated = false
+        for (let attempt = 1; attempt <= 30 && performance.now() - setupStarted < 900000; attempt++) {
+          const before = await diagnostics(page)
+          const previousEventAt = before.logs.at(-1)?.at ?? -1
+          const requestedAtMs = performance.now() - setupStarted
+          await page.locator("#stream-reload").click()
+          const after = await until(
+            page,
+            (d) =>
+              d.revision.includes(initialHash.slice(0, 12)) ||
+              d.logs.some(
+                (log) => log.event === "candidate-failed" && log.revision === initialHash && log.at > previousEventAt
+              ),
+            Math.max(1, 900000 - (performance.now() - setupStarted))
+          )
+          attempts.push({ attempt, before, after, requestedAtMs })
+          await writeFile(path.join(out, `${browserName}-stop-frozen-setup.json`), JSON.stringify(attempts, null, 2))
+          if (after.revision.includes(initialHash.slice(0, 12))) {
+            activated = true
+            break
+          }
+          assert.notEqual(after.status, "reloading", "Retry only after failed candidate retires")
+          assert.equal(after.revision, before.revision, "Failed setup candidate must retain healthy strategy")
+          await page.waitForTimeout(Math.max(0, 3000 - (performance.now() - setupStarted - requestedAtMs)))
+        }
+        assert(activated, "Fixture must actually activate within 30 public Reload attempts and 900 seconds")
+      } else {
+        await page.locator("#stream-reload").click()
+        await until(page, (d) => d.revision.includes(initialHash.slice(0, 12)))
+      }
       if (stopFrozenOnly) {
         await scenario(browserName, "Stop invalidates frozen offer and prepared replacement", async () => {
           const dwellMs = 10000
