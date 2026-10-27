@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { boundedGoalContrast, validatedPositions, safeNatural, arenaCoordinate, verifyGoalBoundSources, type GoalTrack } from "./stream-goal-capture.mts"
 import { appendFile, mkdir, readFile, rename, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { performance } from "node:perf_hooks"
@@ -208,23 +209,17 @@ async function runBrowser(kind: BrowserType) {
     let baselineProfile: string | null = null
     try {
       if (goalsOnly) {
-        const displacements: number[] = []
-        const starts: { tick: number; x: number; y: number }[] = []
-        const outcomes: { direction: "east" | "west"; dx: number; distanceBefore: number; distanceAfter: number }[] = []
-        const tracks: {
-          direction: "east" | "west"
-          positions: { tick: number; x: number; y: number }[]
-          startX: number
-          startY: number
-          targetX: number
-          targetY: number
-        }[] = []
+        const boundEvidence = await verifyGoalBoundSources(sourceIdentity, snapshotRoot)
+        await writeFile(path.join(out, "goal-bound-provenance.json"), JSON.stringify(boundEvidence, null, 2))
+        const tracks: GoalTrack[] = []
         url.searchParams.set("stream-goals-check", "1")
         for (const direction of ["east", "west"] satisfies ("east" | "west")[]) {
           await scenario(browserName, `external ${direction} goal matches supplied candidate`, async () => {
             const hash = fixture.publish(goalStrategySource(direction))
             url.searchParams.set("strategy", fixture.manifest)
             await page.goto(url.href)
+            assert.equal(await page.evaluate((key) => localStorage.getItem(key), profileKey), null,
+              "Goal check requires fresh isolated default profile on each navigation")
             await page.locator("#stream-start").click()
             const accepted = await until(page, (d) =>
               d.logs.some(
@@ -243,24 +238,43 @@ async function runBrowser(kind: BrowserType) {
               await page.evaluate(() => document.documentElement.dataset.checkGoalInputs ?? "[]")
             )
             assert(Array.isArray(inputs))
-            const supplied = inputs.map(record).find((input) => record(input.identity).request === decision.request)
+            for (const field of ["session", "run", "generation", "request", "decision", "tick", "originSession", "originRun"]) {
+              safeNatural(number(Reflect.get(decision, field), field), field)
+            }
+            assert.equal(decision.session, decision.originSession)
+            assert.equal(decision.run, decision.originRun)
+            const matching = inputs.map(record).filter((input) => {
+              const identity = record(input.identity)
+              return ["session", "run", "generation", "request", "decision"].every((field) =>
+                identity[field] === Reflect.get(decision, field)) && identity.phase === 0
+            })
+            assert.equal(matching.length, 1, "Accepted goal requires one exact complete supplied identity")
+            const supplied = matching[0]
             assert(supplied, "Accepted external goal must match an actual supplied Worker observation")
             let goals: unknown = supplied.goals
             let target: Record<string, unknown> | undefined
+            let matchingCandidates = 0
             while (goals !== null && typeof goals === "object") {
               const row = record(goals)
               if (row.$ !== "Con") break
               const goal = record(row.head)
-              if (goal.index === decision.intention.index) target = goal
+              safeNatural(number(goal.index, "goal index"), "goal index")
+              if (goal.index === decision.intention.index) {
+                target = goal
+                matchingCandidates++
+              }
               goals = row.tail
             }
+            assert.equal(matchingCandidates, 1, "Candidate index must be unique")
             assert(target, "Accepted index must identify a supplied bounded candidate")
             assert.equal(target.kind, direction === "east" ? 13 : 15)
             const startX = number(supplied.px, "supplied player x"),
               startY = number(supplied.py, "supplied player y")
             const targetX = number(target.x, "goal x"),
               targetY = number(target.y, "goal y")
-            const tick = number(supplied.tick, "supplied tick")
+            for (const coordinate of [startX, startY, targetX, targetY]) arenaCoordinate(coordinate)
+            const tick = safeNatural(number(supplied.tick, "supplied tick"), "supplied tick")
+            assert(tick <= decision.tick, "Supplied input must precede admission")
             assert(tick < 60, "External goal must be admitted before the common early measurement endpoint")
             await page.waitForFunction(
               () => Number(document.querySelector<HTMLCanvasElement>("#game")?.dataset.tick) >= 105
@@ -270,7 +284,26 @@ async function runBrowser(kind: BrowserType) {
               await page.evaluate(() => document.documentElement.dataset.checkGoalPositions ?? "[]")
             )
             assert(Array.isArray(trajectory))
-            const positions = trajectory.map(record)
+            await writeFile(path.join(out, `${browserName}-goal-${direction}-raw-trajectory.json`),
+              JSON.stringify(trajectory, null, 2))
+            const positions = validatedPositions(trajectory.map(record).map((point) => ({
+              tick: number(point.tick, "point tick"), x: number(point.x, "point x"), y: number(point.y, "point y")
+            })))
+            const terminal = await diagnostics(page)
+            assert.equal(terminal.session, decision.session, "Session continuity through capture")
+            assert.equal(terminal.run, decision.run, "Run continuity through capture")
+            safeNatural(terminal.tick, "Terminal tick")
+            assert(terminal.tick >= 105)
+            let previousLogTick = 0
+            for (const log of terminal.logs) {
+              safeNatural(log.tick, "Journal tick")
+              assert(log.tick >= previousLogTick && log.tick <= terminal.tick, "Journal tick continuity")
+              previousLogTick = log.tick
+            }
+            assert(terminal.logs.every((log) => log.session === decision.session && log.run === decision.run),
+              "Captured logs must retain one actual run")
+            await writeFile(path.join(out, `${browserName}-goal-${direction}-journal.json`),
+              JSON.stringify({ decision, supplied, terminal }, null, 2))
             await writeFile(
               path.join(out, `${browserName}-goal-${direction}-trajectory.json`),
               JSON.stringify(positions, null, 2)
@@ -278,12 +311,15 @@ async function runBrowser(kind: BrowserType) {
             const initial = positions.find((point) => point.tick === 0),
               endpoint = positions.find((point) => number(point.tick, "point tick") >= 80)
             assert(initial && endpoint, "Actual canvas projections must contain initial tick0 and early endpoint")
+            assert.deepEqual(initial, { tick: 0, x: 7200, y: 7200 }, "Audited setup initial projection")
             tracks.push({
               direction,
               startX,
               startY,
               targetX,
               targetY,
+              suppliedTick: tick,
+              acceptedTick: decision.tick,
               positions: positions.map((point) => ({
                 tick: number(point.tick, "point tick"),
                 x: number(point.x, "point x"),
@@ -300,7 +336,6 @@ async function runBrowser(kind: BrowserType) {
               x: number(initial.x, "initial x"),
               y: number(initial.y, "initial y")
             }
-            starts.push(initialPosition)
             const dx = position.x - initialPosition.x,
               dy = position.y - initialPosition.y
             await writeFile(
@@ -312,54 +347,13 @@ async function runBrowser(kind: BrowserType) {
           })
         }
         await scenario(browserName, "opposing external goals control actual navigation", async () => {
-          assert.deepEqual(
-            starts[0],
-            starts[1],
-            "Same-seed contrast must start at the exact same canvas tick and coordinates"
-          )
           assert.deepEqual(pageErrors, [], "Unexpected page errors during external-goal navigation")
           const [east, west] = tracks
           assert(east && west)
-          const common = east.positions.find(
-            (point) =>
-              point.tick >= 80 && point.tick <= 100 && west.positions.some((other) => other.tick === point.tick)
-          )
-          assert(common, "Both actual projections must contain an identical early endpoint tick")
-          for (const track of tracks) {
-            const point = track.positions.find((point) => point.tick === common.tick)
-            assert(point)
-            const initial = starts[0]
-            assert(initial)
-            const dx = point.x - initial.x
-            displacements.push(dx)
-            outcomes.push({
-              direction: track.direction,
-              dx,
-              distanceBefore: Math.hypot(track.targetX - track.startX, track.targetY - track.startY),
-              distanceAfter: Math.hypot(track.targetX - point.x, track.targetY - point.y)
-            })
-          }
-          await writeFile(
-            path.join(out, `${browserName}-goal-contrast.json`),
-            JSON.stringify({ starts, endpointTick: common.tick, outcomes }, null, 2)
-          )
-          for (const result of outcomes) {
-            assert(
-              result.direction === "east" ? result.dx > 30 : result.dx < -30,
-              "External goal must change actual player movement in requested direction"
-            )
-            assert(
-              result.distanceAfter < result.distanceBefore - 20,
-              "Actual player must approach the supplied external goal"
-            )
-          }
-          assert(
-            displacements[0] !== undefined &&
-              displacements[1] !== undefined &&
-              displacements[0] - displacements[1] > 60,
-            "Same-seed opposing external goals must produce opposing physical trajectories"
-          )
-          return { starts, endpointTick: common.tick, outcomes }
+          const contrast = boundedGoalContrast(east, west)
+          await writeFile(path.join(out, `${browserName}-goal-contrast.json`), JSON.stringify(contrast, null, 2))
+          assert(contrast.spatialPass, "SPATIAL: conservative goal direction, approach and separation margins must all be positive")
+          return contrast
         })
         return
       }

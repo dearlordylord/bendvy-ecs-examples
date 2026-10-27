@@ -62,15 +62,52 @@ supported public control and verifies bot play preserves the resulting profile.
 Run `--browser chromium --goals-only` to contrast east and west cardinal advice in fresh runs with
 the same seed. Each accepted generated `GoalChoice` must match the exact index,
 request and source hash of a real supplied bounded candidate. A read-only DOM
-observer reconstructs the early Canvas position projections, including updates
-batched in one browser task. Both runs must share the same initial tick and
-coordinates and an identical endpoint tick between 80 and 100. The player must
-move in the requested horizontal direction and approach its supplied goal.
-Default-only movement cannot pass by using different measurement windows.
-This focused check requires Chromium: the diagnostic WPE WebKit capture can
-sample every sixth HUD tick with different phases between runs, leaving no
-identical sampled endpoint. No interpolated or fabricated positions are used.
-Other acceptance checks still run in both browsers.
+observer reconstructs actual Canvas position publications, including updates
+batched in one browser task. The game can advance multiple ticks before publishing
+a frame, so a rendered common tick is not guaranteed. The revised capture protocol
+uses only actual endpoint samples in [80,100]. It selects the pair by the
+lexicographic key `(absolute tick gap, maximum tick, east tick, west tick)`, without
+reading coordinates. Conflicting duplicate ticks, backwards ticks, nonfinite or
+out-of-arena coordinates, and observed movement exceeding the bound reject capture.
+Identical duplicate projections collapse. Fresh isolated profiles, the fixed seed
+982451653, source-pinned default character/stage/arcana/mode, initial tick zero and
+identical initial coordinates are required. Each run's session/run must remain
+constant. The exact complete supplied request identity, source hash, unique index
+and direction kind must match admission, with supplied tick <= accepted tick < T,
+where T is the smaller endpoint tick. Supplied ticks remain below 60.
+
+The declared source-derived Euclidean displacement ceiling is 6 units per tick.
+For each endpoint, uncertainty is `6 * abs(endpointTick - T)`. East displacement
+minus uncertainty must exceed 30; negative west displacement minus uncertainty
+must exceed 30; east-minus-west displacement minus both uncertainties must exceed
+60. For each direction, the distance from the exact supplied player point to its
+fixed supplied target, minus observed endpoint-to-target distance and uncertainty,
+must exceed 20. Strict positive margins imply the original inequalities at T by
+the triangle inequality. The driver records actual samples, selection key,
+uncertainties, raw distances and each margin. It neither interpolates positions
+nor reports an inferred shared-tick position as an observation.
+
+For fresh character/meta/arcana zero, movement distance is nominally at most 3.75
+units including legal rank-five speed upgrades. Normalization, clamped arena
+coordinates and conservative F32 rounding slack give less than 4 per coordinate,
+hence Euclidean displacement less than 6. This is a source audit, not a formal
+F32 theorem. A checked-in SHA-256 manifest pins movement, setup, upgrade and
+build sources read using `git show` at the clean actual `version.json` revision.
+It also pins the audited emitted game, progression and bot arithmetic modules.
+Unknown revisions or hash drift fail closed and require bound re-audit. The
+manifest currently names the immutable ignored-goal d847 control and corrected
+1b781f5 build. The identical revised protocol must reject the old control on
+spatial margins after successful admission and capture before positive evidence
+is accepted. Historical reports and the original missing-common-tick failure are
+retained; retrospective arithmetic does not replace these reruns.
+
+Pure controls cover coordinate-independent tie selection, duplicate/reset
+rejection, uncertainty-induced false positives, excessive uncertainty, invalid
+admission timing and source drift:
+
+```sh
+node --test tools/survivors-bot/stream-goal-capture.test.mts
+```
 
 The driver saves both trajectories before asserting their physical contrast, so
 a rejected implementation retains observations for diagnosis. Chromium against
