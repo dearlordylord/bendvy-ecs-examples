@@ -70,7 +70,7 @@ export class BrowserStream {
   private statsAt = performance.now()
   private fps = 0
   private tps = 0
-  private readonly controls: HTMLElement
+  private controls: HTMLElement
   private operatorWindow: Window | null = null
   private readonly hooks: {
     start(seed: number): Promise<void>
@@ -83,12 +83,18 @@ export class BrowserStream {
   }
   constructor(hooks: BrowserStream["hooks"]) {
     this.hooks = hooks
+    this.controls = this.createControls(query.get("strategy") ?? "./stream-strategy.json", false)
+    window.addEventListener("pagehide", () => this.operatorWindow?.close())
+    this.draw()
+  }
+  private createControls(manifest: string, compact: boolean) {
     const container = document.createElement("section")
-    this.controls = container
     container.id = "stream-controls"
     container.innerHTML = `<div class="stream-heading"><strong>✦ Stream session</strong><span id="stream-status">Ready</span><button id="stream-compact" aria-label="Toggle stream controls" aria-expanded="true">⚙</button></div><div class="stream-actions"><button id="stream-start">Start stream</button><button id="stream-pause" disabled>Pause</button><button id="stream-stop" disabled>Stop</button><button id="stream-reload">Reload strategy</button><button id="stream-audio">Resume audio</button><a href="./">Player mode</a></div><label class="stream-module">Strategy manifest <input id="stream-strategy" value="" spellcheck="false"></label><p id="stream-intention">Ready to observe</p><p id="stream-error" role="alert" hidden></p><details><summary>Diagnostics</summary><pre id="stream-diagnostics"></pre></details>`
     const input = container.querySelector<HTMLInputElement>("#stream-strategy")
-    if (input) input.value = query.get("strategy") ?? "./stream-strategy.json"
+    if (input) input.value = manifest
+    container.classList.toggle("stream-compact", compact)
+    container.querySelector("#stream-compact")?.setAttribute("aria-expanded", String(!compact))
     for (const button of container.querySelectorAll<HTMLButtonElement>("button"))
       button.addEventListener("click", () => {
         const id = button.id
@@ -111,8 +117,7 @@ export class BrowserStream {
       event.preventDefault()
       location.assign(new URL("./", location.href))
     })
-    window.addEventListener("pagehide", () => this.operatorWindow?.close())
-    this.draw()
+    return container
   }
   openControls() {
     let operator = this.operatorWindow
@@ -133,6 +138,7 @@ export class BrowserStream {
       operator.focus()
       return true
     }
+    this.controls = this.createControls(this.manifest(), this.controls.classList.contains("stream-compact"))
     const title = operator.document.createElement("title")
     title.textContent = "Nightfall bot controls"
     const styles = operator.document.createElement("link")
