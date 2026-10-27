@@ -49,7 +49,6 @@ export class BrowserStream {
   private observation: BendABI.StreamBot.Observation | undefined
   private strategies: StreamStrategies | undefined
   private signature = ""
-  private goalsSignature = ""
   private serial = 0
   private session = 0
   private run = 0
@@ -189,6 +188,10 @@ export class BrowserStream {
         identity: () => this.machine.identity,
         ready: () => {},
         decision: (identity, result) => this.advice(identity, result),
+        fallback: () => {
+          this.memory = Bot.fallback(this.memory)
+          this.intention = "Follow the Bend policy"
+        },
         log: (event, detail, source) => {
           this.log(event, detail, undefined, source)
           if (event.endsWith("failed")) this.error = detail
@@ -236,7 +239,10 @@ export class BrowserStream {
       if (accepted) this.memory = Bot.choose(this.memory, intention.index)
     } else if (this.machine.mode.$ === "Advice")
       accepted = this.apply({ $: "Reply", identity, index: this.machine.mode.fallback, now: this.now() })
-    else accepted = this.apply({ $: "MovementReply", identity, index: 0, count: 1, now: this.now() })
+    else {
+      accepted = this.apply({ $: "MovementReply", identity, index: 0, count: 1, now: this.now() })
+      if (accepted) this.memory = Bot.fallback(this.memory)
+    }
     const source = {
       generation: identity.generation,
       revision: this.strategies?.contentRevision ?? "Bend fallback",
@@ -264,11 +270,7 @@ export class BrowserStream {
       this.viewport().height
     )
     this.memory = planned.memory
-    const signature = rows(planned.observation.goals)
-      .map((goal) => `${goal.index},${goal.kind},${goal.x},${goal.y},${goal.reward}`)
-      .join(";")
-    if (signature !== this.goalsSignature) {
-      this.goalsSignature = signature
+    if (!this.observation || !Bot.same_goals(this.observation.goals, planned.observation.goals)) {
       this.apply({ $: "Invalidate" })
       this.strategies?.invalidate()
       this.nextAdvice = 0

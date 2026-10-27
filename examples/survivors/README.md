@@ -200,6 +200,15 @@ exports the author-facing `Strategy` type. Intentions are `GoalChoice` or
 `UpgradeChoice` with a legal index, or `Default` for the Bend policy.
 Goal kinds reuse the Bend policy codes: XP `2`, chest `5`, relic `9`, and cardinal
 exploration `12` through `15`. Goal indices belong to the current request only.
+`GoalChoice` retains a goal through shared Bend routing and emergency steering.
+The current preference remains selectable in later observations. Cardinal goals
+keep their admitted endpoint; physical pickups still require collection.
+Shared routing can replan or release an unavailable or unreachable goal.
+Movement `Default` releases the preference to the autonomous Bend policy.
+Upgrade `Default` selects the recommended offer and retains the travel goal.
+Candidate identity includes `seed`, `generation` and `kind`; do not cache an index between
+requests. An active strategy failure also releases its preference, while a failed
+replacement preserves the working strategy and goal.
 Observations contain linked Bend lists, legal offers, bounded candidate goals,
 visible threats and player/build state. They never contain the ECS world.
 
@@ -234,7 +243,7 @@ TypeScript is compiled by the strategy-only tool, never executed raw by browsers
 Limits are 8 candidate goals, 128 visible enemies, 64 visible projectiles, 128
 visible pickups and 128 remembered pickups. Pickup discovery has its own budget,
 so dense enemy waves cannot consume its slots. Observations use the actual canvas
-viewport; remembered pickups persist until revisited. Advice is requested at
+viewport; remembered pickups are bounded and refreshed when revisited. Advice is requested at
 most twice per second, with one outstanding request. Candidate fetches time out
 after 3 seconds, Worker preparation after 1 second, and active decisions after
 300 ms. Manifests are limited to 8 KiB and bundled code to 256 KiB. Strategy

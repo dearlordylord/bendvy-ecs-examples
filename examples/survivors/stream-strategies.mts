@@ -58,6 +58,7 @@ export class StreamStrategies {
     identity(): RequestIdentity
     ready(generation: number): void
     decision(identity: RequestIdentity, decision: Decision): boolean
+    fallback(): void
     log(event: string, detail: string, source: StrategyLogContext): void
   }
   constructor(events: StreamStrategies["events"]) {
@@ -282,6 +283,7 @@ export class StreamStrategies {
       this.active = undefined
       this.status = this.candidate ? "reloading" : "fallback"
       this.revision = "Bend fallback"
+      this.events.fallback()
       this.report("active-failed", error, this.context(source, pendingIdentity))
     }
     this.retryAt = performance.now() + Math.min(30000, 1000 * 2 ** Math.min(this.failures++, 5))
