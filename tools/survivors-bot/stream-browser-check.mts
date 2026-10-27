@@ -44,8 +44,10 @@ const soakOnly = args.includes("--soak-only")
 const audioOnly = args.includes("--audio-only")
 const goalsOnly = args.includes("--goals-only")
 const stopFrozenOnly = args.includes("--stop-frozen-only")
-assert(!stopFrozenOnly || (!goalsOnly && !audioOnly && !soakOnly && soakHours === 0),
-  "--stop-frozen-only requires its own bounded run")
+assert(
+  !stopFrozenOnly || (!goalsOnly && !audioOnly && !soakOnly && soakHours === 0),
+  "--stop-frozen-only requires its own bounded run"
+)
 assert(!goalsOnly || (!audioOnly && !soakOnly && soakHours === 0), "--goals-only requires its own focused run")
 assert(
   !goalsOnly || selectedBrowser === "chromium",
@@ -443,12 +445,22 @@ async function runBrowser(kind: BrowserType) {
           }))
           assert.equal(Number(supplied.tick), frozen.tick, "Frozen offer must be an actual supplied upgrade")
           assert(Number(supplied.count) > 0)
-          assert(frozen.logs.some((log) => log.event === "advice-accepted" &&
-            log.tick === frozen.tick && log.intention?.$ === "UpgradeChoice" &&
-            log.intention.index === Number(offer)), "Frozen highlight must match actual accepted offer")
+          assert(
+            frozen.logs.some(
+              (log) =>
+                log.event === "advice-accepted" &&
+                log.tick === frozen.tick &&
+                log.intention?.$ === "UpgradeChoice" &&
+                log.intention.index === Number(offer)
+            ),
+            "Frozen highlight must match actual accepted offer"
+          )
           const replacement = await revision(page, "stop-frozen-replacement")
-          const prepared = await until(page, (d) => d.logs.some((log) =>
-            log.event === "candidate-ready" && log.revision === replacement), 5000)
+          const prepared = await until(
+            page,
+            (d) => d.logs.some((log) => log.event === "candidate-ready" && log.revision === replacement),
+            5000
+          )
           assert(/dwell/i.test(prepared.mode), "Replacement must prepare during genuine frozen dwell")
           assert.equal(prepared.tick, frozen.tick)
           assert.equal(prepared.commits, frozen.commits, "Stop must precede recommendation commit")
@@ -459,9 +471,16 @@ async function runBrowser(kind: BrowserType) {
           const stopAudio = await audioObservation(page)
           const stopCanvasTick = await page.locator("#game").getAttribute("data-tick")
           const stopAt = performance.now()
-          const samples: { elapsedMs: number; diagnostics: Diagnostics; audio: Record<string, string | undefined> }[] = []
-          await writeFile(path.join(out, `${browserName}-stop-frozen-prepared.json`),
-            JSON.stringify({ dwellMs, frozen, offer, supplied, replacement, prepared, stopped, stopAudio, stopCanvasTick }, null, 2))
+          const samples: { elapsedMs: number; diagnostics: Diagnostics; audio: Record<string, string | undefined> }[] =
+            []
+          await writeFile(
+            path.join(out, `${browserName}-stop-frozen-prepared.json`),
+            JSON.stringify(
+              { dwellMs, frozen, offer, supplied, replacement, prepared, stopped, stopAudio, stopCanvasTick },
+              null,
+              2
+            )
+          )
           while (performance.now() - stopAt <= dwellMs + 500) {
             await page.waitForTimeout(250)
             const current = await diagnostics(page)
@@ -476,7 +495,11 @@ async function runBrowser(kind: BrowserType) {
             assert.equal(current.revision, stopped.revision, "Retired replacement cannot activate after Stop")
             assert(!current.logs.some((log) => log.event === "activated" && log.revision === replacement))
             assert.equal(await page.locator("#game").getAttribute("data-tick"), stopCanvasTick)
-            assert.equal(audio.checkAudioNodes, stopAudio.checkAudioNodes, "Stopped game cannot schedule new sound nodes")
+            assert.equal(
+              audio.checkAudioNodes,
+              stopAudio.checkAudioNodes,
+              "Stopped game cannot schedule new sound nodes"
+            )
             assert.equal(audio.checkAudioContexts, stopAudio.checkAudioContexts)
             if (elapsedMs >= 1500) {
               assert.equal(audio.checkAudioState, "running", "Silence must be measured on a running native context")
@@ -492,13 +515,27 @@ async function runBrowser(kind: BrowserType) {
           assert.notEqual(restarted.session, frozen.session, "Public restart must create a fresh session identity")
           assert.equal(restarted.run, 1)
           assert.equal(restarted.commits, 0)
-          assert(restarted.logs.every((log) => log.session === restarted.session && log.run === restarted.run),
-            "Fresh restart cannot inherit old offer or strategy event identities")
+          assert(
+            restarted.logs.every((log) => log.session === restarted.session && log.run === restarted.run),
+            "Fresh restart cannot inherit old offer or strategy event identities"
+          )
           assert.deepEqual(pageErrors, [])
           const restartAudio = await audioObservation(page)
           await page.locator("#stream-stop").click()
-          return { dwellMs, frozen, offer, supplied, replacement, prepared, stopped, stopAudio,
-            holdDurationMs: samples.at(-1)?.elapsedMs, holdSamples: samples.length, restarted, restartAudio }
+          return {
+            dwellMs,
+            frozen,
+            offer,
+            supplied,
+            replacement,
+            prepared,
+            stopped,
+            stopAudio,
+            holdDurationMs: samples.at(-1)?.elapsedMs,
+            holdSamples: samples.length,
+            restarted,
+            restartAudio
+          }
         })
         return
       }
