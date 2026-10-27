@@ -658,6 +658,9 @@ footer {
 #stream-compact { padding:2px 7px; font-size:14px; flex:none }
 #stream-controls.stream-compact { width:min(360px,calc(100vw - 32px)); padding:8px 12px }
 #stream-controls.stream-compact .stream-actions, #stream-controls.stream-compact .stream-module, #stream-controls.stream-compact details { display:none }
+.stream-controller { padding:16px; overflow:auto; background:#111017 }
+.stream-controller #stream-controls { position:static; width:auto; max-width:none; box-shadow:none }
+.stream-controller #stream-controls.stream-compact { width:auto }
 @media (max-width:520px) {
   #menu #tabs:has(a[href="./?stream=1"]) :is(button,a.menu-route) { grid-column:span 2 }
 }

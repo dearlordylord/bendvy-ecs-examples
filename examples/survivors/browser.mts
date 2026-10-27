@@ -581,7 +581,7 @@ document.addEventListener("click", (event) => {
       banishing = !banishing
       b.textContent = banishing ? "Choose an ability to banish" : "Banish an offer…"
     } else if (b.id === "start" || b.id === "start-top" || b.id === "restart") {
-      if (streamMode) document.querySelector<HTMLButtonElement>("#stream-start")?.click()
+      if (streamMode) stream?.startFromGesture()
       else start().catch(fail)
     } else if (b.id === "map") pause(true)
     else if (b.id === "pause" || b.id === "resume") pause()
@@ -613,6 +613,11 @@ document.addEventListener("change", (e) => {
   saveProfile(profile)
 })
 window.addEventListener("keydown", (e) => {
+  if (streamMode && e.code === "F2") {
+    e.preventDefault()
+    stream?.openControls()
+    return
+  }
   if (e.code === "Escape" && pendingUnlock && !running) {
     e.preventDefault()
     const inspected = pendingUnlock
@@ -686,7 +691,7 @@ window.addEventListener("blur", () => {
   if (!streamMode) pause(true)
 })
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden) pause(true)
+  if (!streamMode && document.hidden) pause(true)
 })
 const joy = $("#joystick")
 let pointer: number | null = null
@@ -754,7 +759,8 @@ if (streamMode) {
         },
         audio: () => audio.engine?.context?.state ?? audio.context?.state ?? "locked",
         unlock: () => audio.unlock(),
-        audioStop: () => audio.stop()
+        audioStop: () => audio.stop(),
+        notice: toast
       })
       launchButtons.forEach((button) => {
         button.disabled = false

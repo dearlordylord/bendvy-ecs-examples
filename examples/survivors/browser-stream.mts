@@ -70,6 +70,8 @@ export class BrowserStream {
   private statsAt = performance.now()
   private fps = 0
   private tps = 0
+  private readonly controls: HTMLElement
+  private operatorWindow: Window | null = null
   private readonly hooks: {
     start(seed: number): Promise<void>
     choose(index: number): void
@@ -77,34 +79,66 @@ export class BrowserStream {
     audio(): string
     unlock(): void
     audioStop(): void
+    notice(message: string): void
   }
   constructor(hooks: BrowserStream["hooks"]) {
     this.hooks = hooks
     const container = document.createElement("section")
+    this.controls = container
     container.id = "stream-controls"
     container.innerHTML = `<div class="stream-heading"><strong>✦ Stream session</strong><span id="stream-status">Ready</span><button id="stream-compact" aria-label="Toggle stream controls" aria-expanded="true">⚙</button></div><div class="stream-actions"><button id="stream-start">Start stream</button><button id="stream-pause" disabled>Pause</button><button id="stream-stop" disabled>Stop</button><button id="stream-reload">Reload strategy</button><button id="stream-audio">Resume audio</button><a href="./">Player mode</a></div><label class="stream-module">Strategy manifest <input id="stream-strategy" value="" spellcheck="false"></label><p id="stream-intention">Ready to observe</p><p id="stream-error" role="alert" hidden></p><details><summary>Diagnostics</summary><pre id="stream-diagnostics"></pre></details>`
-    document.body.append(container)
     const input = container.querySelector<HTMLInputElement>("#stream-strategy")
     if (input) input.value = query.get("strategy") ?? "./stream-strategy.json"
-    container.addEventListener("click", (event) => {
-      if (!(event.target instanceof Element)) return
-      const id = event.target.closest("button")?.id
-      if (id === "stream-start") {
-        this.hooks.unlock()
-        void this.start(true).catch((error: unknown) => this.fail(error))
-      } else if (id === "stream-pause") {
-        this.hooks.unlock()
-        this.pause(!this.machine.paused)
-      } else if (id === "stream-stop") this.stop()
-      else if (id === "stream-reload" && this.observation)
-        void this.strategies?.reload(this.manifest(), this.observation)
-      else if (id === "stream-audio") this.hooks.unlock()
-      else if (id === "stream-compact") {
-        const compact = container.classList.toggle("stream-compact")
-        container.querySelector("#stream-compact")?.setAttribute("aria-expanded", String(!compact))
-      }
+    for (const button of container.querySelectorAll<HTMLButtonElement>("button"))
+      button.addEventListener("click", () => {
+        const id = button.id
+        if (id === "stream-start") {
+          this.hooks.unlock()
+          void this.start(true).catch((error: unknown) => this.fail(error))
+        } else if (id === "stream-pause") {
+          this.hooks.unlock()
+          this.pause(!this.machine.paused)
+        } else if (id === "stream-stop") this.stop()
+        else if (id === "stream-reload" && this.observation)
+          void this.strategies?.reload(this.manifest(), this.observation)
+        else if (id === "stream-audio") this.hooks.unlock()
+        else if (id === "stream-compact") {
+          const compact = container.classList.toggle("stream-compact")
+          container.querySelector("#stream-compact")?.setAttribute("aria-expanded", String(!compact))
+        }
+      })
+    container.querySelector("a")?.addEventListener("click", (event) => {
+      event.preventDefault()
+      location.assign(new URL("./", location.href))
     })
+    window.addEventListener("pagehide", () => this.operatorWindow?.close())
     this.draw()
+  }
+  openControls() {
+    if (this.operatorWindow && !this.operatorWindow.closed) {
+      this.operatorWindow.focus()
+      return true
+    }
+    const operator = window.open("", "_blank", "popup,width=560,height=680")
+    if (!operator) {
+      this.hooks.notice("Allow popups for this site, then press F2 to open bot controls.")
+      return false
+    }
+    this.operatorWindow = operator
+    const title = operator.document.createElement("title")
+    title.textContent = "Nightfall bot controls"
+    const styles = operator.document.createElement("link")
+    styles.rel = "stylesheet"
+    styles.href = new URL("./style.css", location.href).href
+    operator.document.head.replaceChildren(title, styles)
+    operator.document.body.className = "stream-controller"
+    operator.document.body.replaceChildren(this.controls)
+    this.draw()
+    return true
+  }
+  startFromGesture() {
+    this.hooks.unlock()
+    if (this.openControls()) void this.start(true).catch((error: unknown) => this.fail(error))
   }
   get active() {
     return this.machine.mode.$ !== "Stopped" || this.starting
@@ -122,7 +156,7 @@ export class BrowserStream {
     return Math.floor(performance.now())
   }
   private manifest() {
-    return document.querySelector<HTMLInputElement>("#stream-strategy")?.value ?? "./stream-strategy.json"
+    return this.controls.querySelector<HTMLInputElement>("#stream-strategy")?.value ?? "./stream-strategy.json"
   }
   private log(
     event: string,
@@ -408,22 +442,23 @@ export class BrowserStream {
     }
   }
   private draw() {
+    if (!this.operatorWindow || this.operatorWindow.closed) return
     const diagnostic = this.diagnostic()
-    const status = document.querySelector("#stream-status")
+    const status = this.controls.querySelector("#stream-status")
     if (status)
       status.textContent = `${this.machine.paused ? "Paused" : diagnostic.mode} · ${diagnostic.status} · ${this.fps} FPS / ${this.tps} TPS · audio ${this.hooks.audio()}`
-    const intention = document.querySelector("#stream-intention")
+    const intention = this.controls.querySelector("#stream-intention")
     if (intention) intention.textContent = this.intention
-    const error = document.querySelector<HTMLElement>("#stream-error")
+    const error = this.controls.querySelector<HTMLElement>("#stream-error")
     if (error) {
       error.hidden = !diagnostic.lastError
       error.textContent = diagnostic.lastError
     }
-    const diagnostics = document.querySelector("#stream-diagnostics")
+    const diagnostics = this.controls.querySelector("#stream-diagnostics")
     if (diagnostics) diagnostics.textContent = JSON.stringify(diagnostic, null, 2)
-    const start = document.querySelector<HTMLButtonElement>("#stream-start")
-    const pause = document.querySelector<HTMLButtonElement>("#stream-pause")
-    const stop = document.querySelector<HTMLButtonElement>("#stream-stop")
+    const start = this.controls.querySelector<HTMLButtonElement>("#stream-start")
+    const pause = this.controls.querySelector<HTMLButtonElement>("#stream-pause")
+    const stop = this.controls.querySelector<HTMLButtonElement>("#stream-stop")
     if (start) start.disabled = this.active
     if (pause) {
       pause.disabled = !this.active
