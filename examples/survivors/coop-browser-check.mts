@@ -1,11 +1,30 @@
 import { chromium, type Page } from "playwright"
-import { defined } from "./host-values.mts"
+import { defined, rows } from "./host-values.mts"
 import assert from "node:assert/strict"
 import type { WorkerReply } from "./coop-boundary.mts"
 import type { Profile } from "./profile.mts"
+import type { Frame } from "./frame.mts"
+type ObservedFrame = Pick<
+  Frame,
+  | "tick"
+  | "stage"
+  | "mode"
+  | "players"
+  | "character"
+  | "level"
+  | "xp"
+  | "weapons"
+  | "passives"
+  | "runId"
+  | "ownPlayerId"
+>
 declare global {
   interface Window {
-    coopCheckFrame?: { stage: number; mode: number; tick: number; players: { id: number; character: number }[] }
+    coopCheckFrame?: { stage: number; mode: number; tick: number; players: Frame["players"] }
+    coopCheckPresentedFrame?: ObservedFrame
+    coopCheckInitialFrame?: ObservedFrame
+    coopCheckPlayerRuns?: BendABI.CoopCombatPrediction.Scene["players"]
+    coopCheckPresent(frame: Frame): void
   }
 }
 const browser = await chromium.launch({
@@ -27,23 +46,48 @@ async function page(url: string, profile?: Profile) {
       profile
     )
   await context.addInitScript(() => {
+    window.coopCheckPresent = (frame) => {
+      const observed = {
+        tick: frame.tick,
+        stage: frame.stage,
+        mode: frame.mode,
+        players: frame.players,
+        character: frame.character,
+        level: frame.level,
+        xp: frame.xp,
+        weapons: frame.weapons,
+        passives: frame.passives,
+        ...(frame.runId === undefined ? {} : { runId: frame.runId }),
+        ...(frame.ownPlayerId === undefined ? {} : { ownPlayerId: frame.ownPlayerId })
+      }
+      window.coopCheckPresentedFrame = observed
+      window.coopCheckInitialFrame ??= observed
+    }
     const NativeWorker = window.Worker
     window.Worker = class extends NativeWorker {
       constructor(url: string | URL, options?: WorkerOptions) {
         super(url, options)
         this.addEventListener("message", (event: MessageEvent<WorkerReply>) => {
           if (event.data.type !== "frame") return
+          window.coopCheckPlayerRuns = event.data.frame.combatForecast.players
           window.coopCheckFrame = {
             tick: event.data.frame.tick,
             stage: event.data.frame.stage,
             mode: event.data.frame.mode,
-            players: event.data.frame.players.map(({ id, character }) => ({ id, character }))
+            players: event.data.frame.players
           }
         })
       }
     }
   })
   const page = await context.newPage()
+  await page.route("**/coop-ui.mjs", async (route) => {
+    const response = await route.fetch()
+    const source = await response.text()
+    const marker = "this.frame = frame;"
+    assert.equal(source.split(marker).length, 2, "One authoritative UI frame hook")
+    await route.fulfill({ response, body: source.replace(marker, marker + "window.coopCheckPresent(frame);") })
+  })
   const loads = { count: 0 }
   nativeLoads.set(page, loads)
   page.on("request", (request) => {
@@ -155,6 +199,21 @@ try {
     { timeout: 90000 }
   )
   console.log("fifth refused")
+  const incumbent = defined(guests[0])
+  const occupied = await page(incumbent.url())
+  await occupied.getByRole("button", { name: "Join party", exact: true }).click()
+  await occupied.waitForFunction(
+    () => /full|unavailable/.test(document.querySelector("#coop-status")?.textContent ?? ""),
+    null,
+    { timeout: 90000 }
+  )
+  assert.ok(defined(nativeLoads.get(occupied)).count > 0, "Occupied-seat attempt reaches real Iroh")
+  assert.equal(await occupied.locator("#coop-play").isVisible(), false)
+  assert.equal(await host.locator('#coop-party-roster [data-ready="true"]').count(), 4)
+  assert.equal(await incumbent.locator("#coop-setup-fields").isEnabled(), true)
+  assert.equal(await incumbent.locator(".coop-diagnostic:visible").count(), 0)
+  await occupied.close()
+  console.log("occupied reserved seat refused; incumbent remains ready")
   await host.locator("#coop-start").click()
   for (const p of [host, ...guests]) {
     await p.locator("#coop-play").waitFor({ state: "visible", timeout: 30000 })
@@ -182,16 +241,27 @@ try {
     "four running clocks",
     await Promise.all([host, ...guests].map((p) => p.locator("#coop-clock").innerText()))
   )
-  const rejoin = defined(guests[2]).url()
-  await defined(guests[2]).close()
+  const departed = defined(guests[0])
+  const progress = defined(await departed.evaluate(() => window.coopCheckPresentedFrame))
+  assert.equal(progress.ownPlayerId, 1)
+  assert.equal(progress.character, 1)
+  assert.ok(progress.tick > 0, "Reconnect starts from an advanced world")
+  const rejoin = departed.url()
+  await departed.close()
   await host.waitForFunction(() => document.querySelector("#coop-play-status")?.textContent.includes("paused"), null, {
     timeout: 15000
   })
   const stopped = await host.locator("#coop-clock").innerText()
-  await defined(guests[0]).keyboard.down("ArrowRight")
+  const paused = defined(await host.evaluate(() => window.coopCheckFrame))
+  const retained = defined(paused.players.find((player) => player.id === 1))
+  const retainedRun = defined(
+    rows(defined(await host.evaluate(() => window.coopCheckPlayerRuns))).find((player) => player.id === 1)
+  ).run
+  await defined(guests[2]).keyboard.down("ArrowRight")
   await new Promise((r) => setTimeout(r, 2500))
-  await defined(guests[0]).keyboard.up("ArrowRight")
+  await defined(guests[2]).keyboard.up("ArrowRight")
   assert.equal(await host.locator("#coop-clock").innerText(), stopped)
+  assert.equal(defined(await host.evaluate(() => window.coopCheckFrame)).tick, paused.tick)
   console.log("shared paused", stopped)
   const returned = await page(rejoin)
   await returned.getByRole("button", { name: "Join party", exact: true }).waitFor()
@@ -203,20 +273,66 @@ try {
   await host.waitForFunction(() => !document.querySelector("#coop-play-status")?.textContent.includes("paused"), null, {
     timeout: 30000
   })
-  console.log("rejoined reserved seat", new URL(returned.url()).searchParams.get("seat"))
-  await new Promise((r) => setTimeout(r, 1500))
+  const restored = defined(await returned.evaluate(() => window.coopCheckInitialFrame))
+  assert.equal(restored.ownPlayerId, 1)
+  assert.equal(restored.tick, paused.tick, "First reconnect snapshot restores the paused world")
+  assert.equal(restored.character, progress.character)
+  assert.equal(restored.runId, progress.runId)
+  assert.equal(restored.stage, paused.stage)
+  assert.equal(restored.mode, paused.mode)
+  assert.equal(restored.level, retainedRun.session.level)
+  assert.equal(restored.xp, retainedRun.session.xp)
+  assert.deepEqual(restored.weapons, rows(retainedRun.player.weapons))
+  assert.deepEqual(restored.passives, rows(retainedRun.player.passives))
+  assert.deepEqual(
+    restored.players.find((player) => player.id === 1),
+    { ...retained, connected: true },
+    "Reconnect restores the retained character, health and position"
+  )
+  console.log(
+    "rejoined reserved seat with retained character and progress",
+    new URL(returned.url()).searchParams.get("seat")
+  )
+  const beforeInput = defined(
+    await host.evaluate(() => window.coopCheckFrame?.players.find((player) => player.id === 1))
+  )
+  await returned.keyboard.down("ArrowRight")
+  await host.waitForFunction(
+    (x) => (window.coopCheckFrame?.players.find((player) => player.id === 1)?.px ?? x) > x + 10,
+    beforeInput.px,
+    { timeout: 15000 }
+  )
+  await returned.keyboard.up("ArrowRight")
+  assert.ok(defined(await host.evaluate(() => window.coopCheckFrame)).tick > paused.tick)
+  console.log("reconnected guest input moves its authoritative retained player")
   console.log(
     "resumed clocks",
     await host.locator("#coop-clock").innerText(),
     await returned.locator("#coop-clock").innerText()
   )
-  for (const p of [host, defined(guests[0]), defined(guests[1]), returned]) {
+  for (const p of [host, defined(guests[1]), defined(guests[2]), returned]) {
     assert.equal(await p.locator(".coop-diagnostic:visible").count(), 0)
     await p.screenshot({ path: `/tmp/network4-${pages.indexOf(p)}.png` })
   }
   console.log(
-    "PASS real Iroh four-player lobby, explicit join and start, capacity, shared pause and reserved-seat rejoin"
+    "PASS real Iroh four-player lobby, explicit join and start, capacity, occupied-seat refusal, shared pause, retained progress and resumed input"
   )
+} catch (error) {
+  for (const [index, page] of pages.entries()) {
+    if (page.isClosed()) continue
+    console.error(
+      "failed page",
+      index,
+      await page.evaluate(() => ({
+        status: document.querySelector("#coop-status")?.textContent,
+        playStatus: document.querySelector("#coop-play-status")?.textContent,
+        roster: document.querySelector("#coop-party-roster")?.textContent,
+        initialFrame: window.coopCheckInitialFrame,
+        currentFrame: window.coopCheckPresentedFrame
+      }))
+    )
+  }
+  throw error
 } finally {
   await browser.close()
 }
