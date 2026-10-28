@@ -4,7 +4,7 @@ import { mkdir, readFile, readdir, writeFile } from "node:fs/promises"
 import { resolve, relative } from "node:path"
 import { chromium, type Page } from "playwright"
 import { authorityLag, inputCoverage, motionOracle } from "./coop-motion-oracle.mts"
-import type { Role, Trace } from "./coop-browser-trace.mts"
+import { measuredTrace, type Role, type Trace } from "./coop-browser-trace.mts"
 import { defined, errorMessage } from "../../examples/survivors/host-values.mts"
 
 const base = process.env.COOP_URL ?? "http://127.0.0.1:8723/coop.html"
@@ -15,7 +15,7 @@ const observationDelay = Number(process.env.COOP_OBSERVATION_DELAY_MS ?? 300)
 const seed = Number(process.env.COOP_TEST_SEED ?? 1729)
 const delays = (process.env.COOP_SEND_COMPLETION_MS ?? "0,200,600").split(",").map(Number)
 assert.ok(Number.isInteger(seed) && seed >= 0 && seed <= 4294967295)
-assert.ok(duration >= 30000 && observationDelay >= 0)
+assert.ok(Number.isFinite(duration) && duration >= 30000 && Number.isFinite(observationDelay) && observationDelay >= 0)
 assert.ok(delays.length > 0 && delays.every((delay) => Number.isFinite(delay) && delay >= 0))
 await mkdir(output, { recursive: true })
 const files = (await readdir(artifact, { recursive: true, withFileTypes: true }))
@@ -57,9 +57,18 @@ async function instrument(page: Page, role: Role, delay: number, errors: string[
       transportStates: [],
       lastFrame: null
     })
+    globalThis.__transportQualificationWindow = null
+    globalThis.__transportQualificationMeasuredFrame = null
+    globalThis.__transportQualificationWorker = null
+    globalThis.__transportQualificationRecording = (wall) => {
+      const window = globalThis.__transportQualificationWindow
+      return !window || wall <= window.end
+    }
     globalThis.__transportQualificationDraw = (frame) => {
+      const wall = Date.now()
+      if (!globalThis.__transportQualificationRecording(wall)) return
       trace.renders.push({
-        wall: Date.now(),
+        wall,
         tick: frame.tick,
         phase: frame.phase,
         round: frame.roundId ?? 0,
@@ -75,10 +84,12 @@ async function instrument(page: Page, role: Role, delay: number, errors: string[
     globalThis.Worker = class extends NativeWorker {
       constructor(...args: ConstructorParameters<typeof Worker>) {
         super(...args)
+        if (String(args[0]).includes("/coop-worker.mjs")) globalThis.__transportQualificationWorker = this
         this.addEventListener("message", (event: MessageEvent<unknown>) => {
           const value = event.data
           if (typeof value !== "object" || value === null || !("type" in value)) return
           if (value.type === "error") trace.workerErrors.push(JSON.stringify(value))
+          if (value.type === "finished") globalThis.__transportQualificationWorker = null
           if (value.type === "qualification-input" && "row" in value) {
             const row = value.row
             if (typeof row !== "object" || row === null) throw Error("Invalid input observation")
@@ -103,6 +114,7 @@ async function instrument(page: Page, role: Role, delay: number, errors: string[
               typeof row.seq !== "number"
             )
               throw Error("Invalid input observation fields")
+            if (!globalThis.__transportQualificationRecording(row.wall)) return
             trace.inputResolutions.push({
               wall: row.wall,
               worldTick: row.worldTick,
@@ -117,6 +129,10 @@ async function instrument(page: Page, role: Role, delay: number, errors: string[
           }
         })
         this.addEventListener("error", (event) => trace.workerErrors.push(event.message))
+      }
+      override terminate() {
+        if (globalThis.__transportQualificationWorker === this) globalThis.__transportQualificationWorker = null
+        super.terminate()
       }
       override postMessage(message: unknown, options: Transferable[] | StructuredSerializeOptions = []) {
         if (
@@ -149,7 +165,15 @@ async function instrument(page: Page, role: Role, delay: number, errors: string[
     `,
         "advanced worker input"
       )
-      await route.fulfill({ response, body })
+      await route.fulfill({
+        response,
+        body:
+          body +
+          `
+        const qualificationOnmessage=onmessage;
+        onmessage=event=>{if(event.data?.type==='qualification-barrier'){postMessage({type:'qualification-barrier'});return;}qualificationOnmessage(event);};
+      `
+      })
     })
   await page.route("**/coop-ui.mjs", async (route) => {
     const response = await route.fetch(),
@@ -159,7 +183,7 @@ async function instrument(page: Page, role: Role, delay: number, errors: string[
       source,
       marker,
       marker +
-        `globalThis.__transportQualification.lastFrame={wall:Date.now(),tick:frame.tick,phase:frame.phase,round:frame.roundId??0,runId:frame.runId??'',choicePending:frame.choicePending??false};`,
+        `globalThis.__transportQualification.lastFrame={wall:Date.now(),tick:frame.tick,phase:frame.phase,round:frame.roundId??0,runId:frame.runId??'',choicePending:frame.choicePending??false};if(globalThis.__transportQualificationRecording(Date.now()))globalThis.__transportQualificationMeasuredFrame=globalThis.__transportQualification.lastFrame;`,
       "presented frame"
     )
     await route.fulfill({ response, body })
@@ -190,7 +214,7 @@ async function instrument(page: Page, role: Role, delay: number, errors: string[
       Transport.prototype.send=async function(bytes,...args){
         ${role === "guest" && delay > 0 ? `await new Promise(resolve=>setTimeout(resolve,${delay}));` : ""}
         const start=Date.now();try{return await qualificationSend.call(this,bytes,...args);}
-        finally{globalThis.__transportQualification.nativeSends.push({start,end:Date.now(),byteLength:bytes.byteLength,confirmDelivery:args[0]===true});}
+        finally{const end=Date.now();if(globalThis.__transportQualificationRecording(start)&&globalThis.__transportQualificationRecording(end))globalThis.__transportQualification.nativeSends.push({start,end,byteLength:bytes.byteLength,confirmDelivery:args[0]===true});}
       };
     `
     })
@@ -206,7 +230,7 @@ async function instrument(page: Page, role: Role, delay: number, errors: string[
       const qualificationCreate=CoopTransport.create;
       CoopTransport.create=function(callback,...args){return qualificationCreate.call(this,event=>{
         const state=event.state;if(!state||!Number.isFinite(state.pendingSends)||!Number.isFinite(state.pendingBytes))throw Error('Missing transport queue observation');
-        const rows=globalThis.__transportQualification.transportStates;rows.push({pendingSends:state.pendingSends,pendingBytes:state.pendingBytes});if(rows.length>5000)rows.shift();
+        const rows=globalThis.__transportQualification.transportStates;const wall=Date.now();if(globalThis.__transportQualificationRecording(wall)){rows.push({wall,pendingSends:state.pendingSends,pendingBytes:state.pendingBytes});if(rows.length>5000)rows.shift();}
         ${role === "guest" ? `if(event.type==='message')setTimeout(()=>callback(event),${observationDelay});else callback(event);` : `callback(event);`}
       },...args);};
     `
@@ -284,16 +308,23 @@ try {
       )
       const rejoined = await guest.evaluate(() => globalThis.__transportQualification.lastFrame)
       assert.equal(defined(rejoined).runId, beforeReconnect.runId, "reconnect restores the same active run")
-      for (const page of [host, guest])
-        await page.evaluate(() => {
-          const trace = globalThis.__transportQualification
-          trace.inputResolutions.length = 0
-          trace.renders.length = 0
-          trace.nativeSends.length = 0
-          trace.transportStates.length = 0
-        })
+      const start = Date.now(),
+        end = start + duration
+      await Promise.all(
+        [host, guest].map((page) =>
+          page.evaluate(
+            (window) => {
+              globalThis.__transportQualificationWindow = window
+              globalThis.__transportQualificationMeasuredFrame = null
+              const trace = globalThis.__transportQualification
+              trace.inputResolutions.length = 0
+              trace.renders.length = 0
+            },
+            { start, end }
+          )
+        )
+      )
       console.log(JSON.stringify({ delay, stage: "running" }))
-      const start = Date.now()
       let previousDirection: string | undefined
       while (Date.now() - start < duration) {
         const direction = Math.floor((Date.now() - start) / 3000) % 2 ? "ArrowLeft" : "ArrowRight"
@@ -328,8 +359,32 @@ try {
         await page.keyboard.up("ArrowLeft")
         await page.keyboard.up("ArrowRight")
       }
-      const hostTrace = await host.evaluate(() => globalThis.__transportQualification)
-      const guestTrace = await guest.evaluate(() => globalThis.__transportQualification)
+      await host.evaluate(
+        () =>
+          new Promise<void>((resolve, reject) => {
+            const worker = globalThis.__transportQualificationWorker
+            if (!worker) return resolve()
+            const timeout = setTimeout(() => reject(Error("Authoritative clock barrier timed out")), 5000)
+            const listener = (event: MessageEvent<unknown>) => {
+              const value = event.data
+              if (typeof value !== "object" || value === null || !("type" in value)) return
+              if (value.type !== "qualification-barrier" && value.type !== "finished") return
+              clearTimeout(timeout)
+              worker.removeEventListener("message", listener)
+              resolve()
+            }
+            worker.addEventListener("message", listener)
+            worker.postMessage({ type: "qualification-barrier" })
+          })
+      )
+      const snapshot = (page: Page) =>
+        page.evaluate(() => ({
+          ...globalThis.__transportQualification,
+          lastFrame: globalThis.__transportQualificationMeasuredFrame
+        }))
+      const [hostSnapshot, guestSnapshot] = await Promise.all([snapshot(host), snapshot(guest)])
+      const hostTrace = measuredTrace(hostSnapshot, { start, end })
+      const guestTrace = measuredTrace(guestSnapshot, { start, end })
       const lag = authorityLag(hostTrace.inputResolutions, guestTrace.renders, start)
       const motion = motionOracle(guestTrace.renders, start)
       const coverage = inputCoverage(hostTrace.inputResolutions)
@@ -338,6 +393,8 @@ try {
         JSON.stringify({
           delay,
           observationDelay,
+          startWall: start,
+          endWall: end,
           seed,
           duration,
           lag,
