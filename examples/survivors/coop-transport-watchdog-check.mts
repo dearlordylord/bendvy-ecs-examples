@@ -189,7 +189,7 @@ try {
     content:
       'import * as facade from "./coop-transport.mjs"; import * as native from "./iroh/iroh_transport.js"; globalThis.retryFacade = facade; globalThis.retryNative = native;'
   })
-  await page.waitForFunction(() => retryFacade !== undefined && retryNative !== undefined)
+  await page.waitForFunction(() => globalThis.retryFacade !== undefined && globalThis.retryNative !== undefined)
   const timeoutRetry = await page.evaluate(async () => {
     const facade = retryFacade,
       native = retryNative
