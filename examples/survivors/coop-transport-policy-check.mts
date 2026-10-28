@@ -79,8 +79,19 @@ function connected() {
 {
   const accepted = run(available(), { $: "Incoming", offer: 1 })
   const accept = effect(accepted.effects, "Accept")
-  assert.deepEqual(run(accepted.state, { $: "Incoming", offer: 2 }).effects, [{ $: "Refuse", offer: 2 }])
-  const cancelled = run(accepted.state, { $: "DisconnectRequest" })
+  const queued = run(accepted.state, { $: "Incoming", offer: 2 })
+  assert.deepEqual(queued.effects, [])
+  const retry = run(queued.state, { $: "AttemptFailed", operation: accept.operation })
+  assert.equal(effect(retry.effects, "Accept").offer, 2)
+  const authenticated = run(queued.state, {
+    $: "ConnectedEvent",
+    operation: accept.operation,
+    connection: accept.operation,
+    peer: "admitted"
+  })
+  assert.equal(effect(authenticated.effects, "Refuse").offer, 2)
+  const cancelled = run(queued.state, { $: "DisconnectRequest" })
+  assert.equal(effect(cancelled.effects, "Refuse").offer, 2)
   const late = run(cancelled.state, {
     $: "ConnectedEvent",
     operation: accept.operation,
@@ -88,6 +99,22 @@ function connected() {
     peer: "late"
   })
   assert.deepEqual(late.effects, [{ $: "Disconnect", connection: accept.operation }])
+}
+{
+  const accepting = run(available(), { $: "Incoming", offer: 1 })
+  let state = accepting.state
+  for (let offer = 2; offer <= 17; offer++) {
+    const queued = run(state, { $: "Incoming", offer })
+    assert.deepEqual(queued.effects, [])
+    state = queued.state
+  }
+  assert.deepEqual(run(state, { $: "Incoming", offer: 18 }).effects, [{ $: "Refuse", offer: 18 }])
+  assert.deepEqual(
+    run(state, { $: "CloseRequest" })
+      .effects.filter((item) => item.$ === "Refuse")
+      .map((item) => item.offer),
+    Array.from({ length: 16 }, (_, index) => index + 2)
+  )
 }
 {
   const { state, connection } = connected()

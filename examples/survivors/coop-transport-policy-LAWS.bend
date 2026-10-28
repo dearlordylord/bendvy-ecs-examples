@@ -157,3 +157,21 @@ law disconnect_retains_room_drain:
 law guest_creation_keeps_attempt_budget:
   for +state:T.State
   {T.endpoint_ready(T.GuestEndpoint{},state) == T.Out{state,[]} : T.Out}
+
+law waiting_offer_budget_exact:
+  {T.max_waiting_offers() == 16n : Nat}
+law accepting_retains_another_offer:
+  for +operation:U32 for +current:U32 for +offer:U32
+  {T.incoming_selected(True{},T.State{T.Accepting{operation,current,[]},0,0,[],None{},None{},None{},True{}},offer) == T.Out{T.State{T.Accepting{operation,current,[offer]},0,0,[],None{},None{},None{},True{}},[]} : T.Out}
+law full_offer_budget_refuses:
+  for +operation:U32 for +current:U32 for +waiting:U32 for +offer:U32
+  {T.incoming_selected(True{},T.State{T.Accepting{operation,current,[waiting,waiting,waiting,waiting,waiting,waiting,waiting,waiting,waiting,waiting,waiting,waiting,waiting,waiting,waiting,waiting]},0,0,[],None{},None{},None{},True{}},offer) == T.Out{T.State{T.Accepting{operation,current,[waiting,waiting,waiting,waiting,waiting,waiting,waiting,waiting,waiting,waiting,waiting,waiting,waiting,waiting,waiting,waiting]},0,0,[],None{},None{},None{},True{}},[T.Refuse{offer}]} : T.Out}
+law failed_accept_tries_oldest:
+  for operation:U32 for current:U32 for +offer:U32 for +waiting:List<&2,U32>
+  {T.failed_attempt_selected(True{},T.State{T.Accepting{operation,current,offer <> waiting},0,0,[],None{},None{},None{},True{}}) == T.Out{T.State{T.Accepting{1,offer,waiting},1,0,[],None{},None{},None{},True{}},[T.Accept{offer,1}]} : T.Out}
+law authenticated_accept_refuses_waiting:
+  for operation:U32 for current:U32 for +waiting:List<&2,U32> for +connection:U32 for +peer:String
+  {T.connected_selected(True{},T.State{T.Accepting{operation,current,waiting},0,0,[],None{},None{},None{},True{}},connection,peer) == T.Out{T.State{T.Connected{connection,peer},0,1,[],None{},None{},None{},True{}},List.append(&2,T.Effect,T.refused_offers(waiting),[T.NotifyConnected{peer,0}])} : T.Out}
+law cancelled_accept_refuses_waiting:
+  for operation:U32 for current:U32 for +waiting:List<&2,U32>
+  {T.cancelled_work(T.State{T.Accepting{operation,current,waiting},0,0,[],None{},None{},None{},True{}},T.Cancelled{}) == List.append(&2,T.Effect,T.refused_offers(waiting),[]) : List<&2,T.Effect>}

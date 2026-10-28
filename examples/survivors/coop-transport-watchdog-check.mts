@@ -1,6 +1,8 @@
 import assert from "node:assert/strict"
 import { spawn } from "node:child_process"
 import { chromium } from "playwright"
+import type { NativeEvent, TransportEvent, TransportIO } from "./coop-transport.mts"
+import type * as FacadeModule from "./coop-transport.mts"
 
 type NativeFact = { type: string; offerId?: number }
 interface NativeSlot {
@@ -21,6 +23,8 @@ interface Probe {
 }
 declare global {
   var watchdogProbe: Probe
+  var retryFacade: typeof FacadeModule
+  var retryNative: { default(): Promise<unknown>; Transport: Pick<TransportIO, "create"> }
 }
 const target = process.argv[2]
 const binary = process.argv[3] ?? "/tmp/bendvy-iroh-cargo-target/debug/iroh-native-probe"
@@ -180,6 +184,90 @@ try {
         : `PASS raw ${mode} receive rejection and endpoint reuse`
     )
   }
+  await page.addScriptTag({
+    type: "module",
+    content:
+      'import * as facade from "./coop-transport.mjs"; import * as native from "./iroh/iroh_transport.js"; globalThis.retryFacade = facade; globalThis.retryNative = native;'
+  })
+  const timeoutRetry = await page.evaluate(async () => {
+    const facade = retryFacade,
+      native = retryNative
+    await native.default()
+    const events: TransportEvent[] = []
+    const guestEvents: NativeEvent[] = []
+    let delayed: NativeEvent | undefined
+    let delayNext = false
+    let creates = 0
+    const io: TransportIO = {
+      now: () => Math.floor(performance.now()),
+      schedule: (callback, milliseconds) => setTimeout(callback, milliseconds),
+      cancel: (timer) => {
+        if (typeof timer !== "number") throw Error("Invalid timer")
+        clearTimeout(timer)
+      },
+      create: async (callback) => {
+        creates++
+        return native.Transport.create((event: NativeEvent) => {
+          if (event.type === "incoming" && delayNext) {
+            delayNext = false
+            delayed = event
+            return
+          }
+          if (event.type === "incoming" && delayed) {
+            const expired = delayed
+            delayed = undefined
+            callback(expired)
+          }
+          callback(event)
+        })
+      }
+    }
+    const host = await facade.CoopTransport.create((event) => events.push(event), io)
+    const guest = await native.Transport.create((event: NativeEvent) => guestEvents.push(event))
+    const invitation = host.invitation()
+    const identity = guest.endpointId()
+    const cycles = []
+    try {
+      for (const cycle of [0, 1]) {
+        delayNext = true
+        const started = performance.now()
+        const failed = await guest.join(invitation, cycle * 2 + 1).then(
+          () => "Unexpected connection",
+          (error: unknown) => String(error)
+        )
+        const elapsed = performance.now() - started
+        await guest.join(invitation, cycle * 2 + 2)
+        const payload = [0, 255, cycle, 128]
+        await guest.send(new Uint8Array(payload), true, cycle * 2 + 2)
+        await watchdogProbe.until(() => events.filter((event) => event.type === "message").length === cycle + 1)
+        const received = events.filter((event) => event.type === "message")[cycle]
+        if (received?.type !== "message") throw Error("Missing retry message")
+        cycles.push({ failed, elapsed, payload, received: Array.from(received.bytes) })
+        host.disconnectPeer()
+        await watchdogProbe.until(() =>
+          guestEvents.some((event) => event.type === "disconnected" && event.connectionId === cycle * 2 + 2)
+        )
+      }
+      return {
+        cycles,
+        creates,
+        preserved: host.invitation() === invitation && guest.endpointId() === identity,
+        connections: events.filter((event) => event.type === "connected").length
+      }
+    } finally {
+      guest.close()
+      host.close()
+    }
+  })
+  assert.equal(timeoutRetry.creates, 1, "Retry must retain the host endpoint")
+  assert.equal(timeoutRetry.preserved, true, "Retry must retain the guest endpoint and invitation")
+  assert.equal(timeoutRetry.connections, 2)
+  for (const cycle of timeoutRetry.cycles) {
+    assert.match(cycle.failed, /Connection timed out/)
+    assert.ok(cycle.elapsed >= 19000 && cycle.elapsed < 27000, "Native connect watchdog must remain bounded")
+    assert.deepEqual(cycle.received, cycle.payload, "Same-endpoint retry must deliver exact bytes")
+  }
+  console.log("PASS same-endpoint timeout retries through Bend admission with delayed expired offers")
   const offers = await page.evaluate(async () => {
     const hostId = await watchdogProbe.create(false)
     const host = watchdogProbe.slots[hostId]

@@ -28,7 +28,10 @@ outcome of the requested operation, rather than an unscoped callback error.
 An endpoint holds one authenticated connection. `disconnectPeer(connectionId)`
 closes only that connection and retains the invitation. Zero or an omitted ID
 cancels its current pending operation or connection. A stale nonzero ID cannot
-disconnect a replacement connection.
+disconnect a replacement connection. Bend retains at most sixteen waiting offers
+while one acceptance is pending. Failed authentication tries the oldest waiting
+offer. Successful authentication refuses the remaining offers, preserving one
+exclusive peer.
 Recreate a closed endpoint;
 it cannot be rebound. Bend refuses another offer while connected or connecting. A peer
 disconnect leaves a still-open endpoint available for another connection. The
@@ -95,7 +98,12 @@ node examples/survivors/coop-transport-watchdog-check.mts http://127.0.0.1:8713/
 The watchdog check uses native fault peers to bypass browser send admission. Its
 `--fault oversized` and `--fault stalled` modes read the invitation from standard
 input and do not print it. The check exercises receive bounds, stalled streams,
-offer saturation and expiry, and endpoint reuse over actual Iroh.
+offer saturation and expiry, and endpoint reuse over actual Iroh. Two consecutive
+connect timeouts each retry immediately on the same endpoints through the production
+Bend admission policy and deliver exact bytes after authentication. Delayed expired
+offer callbacks arrive before each replacement offer, so failed authentication
+must preserve the waiting retry. The separate saturation check uses fresh clients
+to isolate native offer-store capacity recovery.
 
 The optional `iroh-native-probe` binary is a byte echo diagnostic, not a game
 server or native Bend/Iroh FFI. Its loopback checks cover ordering and frame bounds;

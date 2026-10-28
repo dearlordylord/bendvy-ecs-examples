@@ -283,13 +283,65 @@ await test("reconnect fences pending write completion and old deadline events", 
   transport.close()
 })
 
-await test("simultaneous incoming offers accept one and refuse competitors without trusted payload identities", async () => {
+await test("failed incoming authentication preserves the next offer for the same endpoint retry", async () => {
+  const { io, transport } = await open()
+  io.emit({ type: "incoming", offerId: 71 })
+  io.emit({ type: "incoming", offerId: 72 })
+  const abandoned = io.accepts[0]
+  assert.ok(abandoned)
+  abandoned.result.reject(Error("aborted by peer during abandoned handshake"))
+  await flush()
+  assert.deepEqual(
+    io.accepts.map((attempt) => attempt.offer),
+    [71, 72]
+  )
+  assert.deepEqual(io.refused, [])
+  const retry = io.accepts[1]
+  assert.ok(retry)
+  io.connect(retry.operation)
+  retry.result.resolve(undefined)
+  const sent = transport.send(new Uint8Array([7, 8, 9]))
+  assert.deepEqual(io.writes[0]?.bytes, new Uint8Array([7, 8, 9]))
+  io.writes[0]?.result.resolve(undefined)
+  await sent
+  transport.close()
+})
+
+await test("incoming acceptance retains at most sixteen waiting offers and disposes them on close", async () => {
+  const { io, transport } = await open()
+  for (let offer = 1; offer <= 18; offer++) io.emit({ type: "incoming", offerId: offer })
+  assert.equal(io.accepts.length, 1)
+  assert.deepEqual(io.refused, [18])
+  transport.close()
+  assert.deepEqual(io.refused, [18, ...Array.from({ length: 16 }, (_, index) => index + 2)])
+  io.accepts[0]?.result.reject(Error("closed acceptance"))
+  await flush()
+  assert.equal(io.accepts.length, 1)
+})
+
+await test("disconnecting an acceptance refuses its waiting offers before another admission", async () => {
+  const { io, transport } = await open()
+  io.emit({ type: "incoming", offerId: 81 })
+  io.emit({ type: "incoming", offerId: 82 })
+  transport.disconnectPeer()
+  assert.deepEqual(io.refused, [82])
+  io.emit({ type: "incoming", offerId: 83 })
+  io.accepts[0]?.result.reject(Error("cancelled stale acceptance"))
+  await flush()
+  assert.deepEqual(
+    io.accepts.map((attempt) => attempt.offer),
+    [81, 83]
+  )
+  transport.close()
+})
+
+await test("simultaneous incoming offers retain competitors until one peer authenticates", async () => {
   const { io, events, transport } = await open()
   io.emit({ type: "incoming", offerId: 7 })
   io.emit({ type: "incoming", offerId: 8 })
   io.emit({ type: "incoming", offerId: 9 })
   assert.equal(io.accepts.length, 1)
-  assert.deepEqual(io.refused, [8, 9])
+  assert.deepEqual(io.refused, [])
   const accepted = io.accepts[0]
   assert.ok(accepted)
   io.connect(accepted.operation)

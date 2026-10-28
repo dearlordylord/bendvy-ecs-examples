@@ -12,6 +12,21 @@ const source = (await readFile(sourcePath, "utf8")).replace(
 )
 const mutants = [
   {
+    name: "waiting offer budget doubles",
+    before: "def max_waiting_offers() -> Nat: 16n",
+    after: "def max_waiting_offers() -> Nat: 32n"
+  },
+  {
+    name: "failed authentication drops waiting offers",
+    before: "accept_waiting(State{Available{},next,epoch,rows,writer,handshake,drain,allowIncoming},waiting)",
+    after: "Out{State{Available{},next,epoch,rows,writer,handshake,drain,allowIncoming},[]}"
+  },
+  {
+    name: "authenticated peer retains competing offers",
+    before: "List.append(&2,Effect,refused_offers(waiting),[NotifyConnected{peer,0}])",
+    after: "[NotifyConnected{peer,0}]"
+  },
+  {
     name: "peer departure cancels the room drain timer",
     before: "cancelled_work(State{phase,next,epoch,rows,writer,handshake,None{},allowIncoming},Cancelled{})",
     after: "cancelled_work(state,Cancelled{})"
@@ -73,7 +88,7 @@ try {
     assert.notEqual(checked.status, 0, `Behavior checks must reject: ${mutant.name}`)
     assert.match(
       checked.stderr,
-      /AssertionError|Missing (?:Settle|NotifyTimeout) effect/,
+      /AssertionError|Missing (?:Settle|NotifyTimeout|Accept|Refuse) effect/,
       `Counterexample must be behavioral: ${mutant.name}\n${checked.stderr}`
     )
     console.log(JSON.stringify({ status: "REJECTED", mutation: mutant.name }))

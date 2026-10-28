@@ -14,7 +14,7 @@ type Phase is Data:
   Creating{operation:U32,request:U32,role:EndpointRole}
   Available{}
   Connecting{operation:U32,request:U32,candidate:U32,remaining:List<&2,U32>}
-  Accepting{operation:U32,offer:U32}
+  Accepting{operation:U32,offer:U32,waiting:List<&2,U32>}
   Connected{connection:U32,peer:String}
   Closed{}
 type State is Data: State{phase:Phase,next:U32,epoch:U32,pending:List<&2,Pending>,writer:Maybe<&2,Writer>,handshake:Maybe<&2,Timer>,drain:Maybe<&2,Timer>,allowIncoming:Bool}
@@ -55,6 +55,7 @@ type Effect is Data:
 type Out is Data: Out{state:State,effects:List<&2,Effect>}
 
 def fresh() -> State: State{Dormant{},0,0,[],None{},None{},None{},False{}}
+def max_waiting_offers() -> Nat: 16n
 def max_frame_bytes() -> U32: 1048576
 def max_pending_bytes() -> U32: 4194304
 def max_pending_messages() -> Nat: 16n
@@ -125,10 +126,18 @@ def rejected_attempt(phase:Phase,+reason:Reason) -> List<&2,Effect>:
     case Creating{_,request,_}: [Settle{request,False{},reason}]
     case Connecting{_,request,_,_}: [SettleJoin{request,False{},0,reason}]
     case _: []
+def refused_offers(offers:List<&2,U32>) -> List<&2,Effect>:
+  match offers:
+    case []: []
+    case offer <> rest: Refuse{offer} <> refused_offers(rest)
+def queued_offers(phase:Phase) -> List<&2,U32>:
+  match phase:
+    case Accepting{_,_,waiting}: waiting
+    case _: []
 def cancelled_work(+state:State,+reason:Reason) -> List<&2,Effect>:
   match state:
     case State{phase,_,_,rows,writer,handshake,drain,+allowIncoming}:
-      List.append(&2,Effect,rejected_attempt(phase,reason),List.append(&2,Effect,rejected_rows(rows,reason),List.append(&2,Effect,rejected_writer(writer,reason),List.append(&2,Effect,timer_cancel(handshake),timer_cancel(drain)))))
+      List.append(&2,Effect,List.append(&2,Effect,refused_offers(queued_offers(phase)),rejected_attempt(phase,reason)),List.append(&2,Effect,rejected_rows(rows,reason),List.append(&2,Effect,rejected_writer(writer,reason),List.append(&2,Effect,timer_cancel(handshake),timer_cancel(drain)))))
 def close_selected(already:Bool,+state:State,reason:Reason) -> Out:
   match already state:
     case True{} _: Out{state,[]}
@@ -179,19 +188,24 @@ def join_selected(available:Bool,+state:State,request:U32,+candidates:List<&2,U3
 def incoming_allowed(state:State) -> Bool:
   match state:
     case State{_,_,_,_,_,_,_,allowIncoming}: allowIncoming
+def queue_offer(bounded:Bool,+state:State,+offer:U32) -> Out:
+  match bounded state:
+    case True{} State{Accepting{operation,current,waiting},next,epoch,rows,writer,handshake,drain,+allowIncoming}: Out{State{Accepting{operation,current,List.append(&2,U32,waiting,[offer])},next,epoch,rows,writer,handshake,drain,allowIncoming},[]}
+    case _ _: Out{state,[Refuse{offer}]}
 def incoming_selected(available:Bool,+state:State,+offer:U32) -> Out:
   match available state:
-    case True{} State{Available{},+next,epoch,rows,writer,handshake,drain,+allowIncoming}: Out{State{Accepting{U32.add(next,1),offer},U32.add(next,1),epoch,rows,writer,handshake,drain,allowIncoming},[Accept{offer,U32.add(next,1)}]}
+    case True{} State{Available{},+next,epoch,rows,writer,handshake,drain,+allowIncoming}: Out{State{Accepting{U32.add(next,1),offer,[]},U32.add(next,1),epoch,rows,writer,handshake,drain,allowIncoming},[Accept{offer,U32.add(next,1)}]}
+    case True{} State{Accepting{_,_,+waiting},_,_,_,_,_,_,+allowIncoming}: queue_offer(Nat.is_lt(List.length(&2,U32,waiting),max_waiting_offers()),state,offer)
     case _ _: Out{state,[Refuse{offer}]}
 def attempt_matches(state:State,+operation:U32) -> Bool:
   match state:
     case State{Connecting{current,_,_,_},_,_,_,_,_,_,+allowIncoming}: U32.is_eq(current,operation)
-    case State{Accepting{current,_},_,_,_,_,_,_,+allowIncoming}: U32.is_eq(current,operation)
+    case State{Accepting{current,_,_},_,_,_,_,_,_,+allowIncoming}: U32.is_eq(current,operation)
     case _: False{}
 def connected_selected(matching:Bool,+state:State,+connection:U32,+peer:String) -> Out:
   match matching state:
     case True{} State{Connecting{_,request,candidate,_},next,+epoch,rows,writer,handshake,drain,+allowIncoming}: Out{State{Connected{connection,peer},next,U32.add(epoch,1),rows,writer,handshake,drain,allowIncoming},[SettleJoin{request,True{},candidate,NoError{}},NotifyConnected{peer,candidate}]}
-    case True{} State{Accepting{_,_},next,+epoch,rows,writer,handshake,drain,+allowIncoming}: Out{State{Connected{connection,peer},next,U32.add(epoch,1),rows,writer,handshake,drain,allowIncoming},[NotifyConnected{peer,0}]}
+    case True{} State{Accepting{_,_,waiting},next,+epoch,rows,writer,handshake,drain,+allowIncoming}: Out{State{Connected{connection,peer},next,U32.add(epoch,1),rows,writer,handshake,drain,allowIncoming},List.append(&2,Effect,refused_offers(waiting),[NotifyConnected{peer,0}])}
     case _ _: Out{state,[Disconnect{connection}]}
 def connected_duplicate(duplicate:Bool,+state:State,+operation:U32,+connection:U32,+peer:String) -> Out:
   match duplicate:
@@ -202,10 +216,18 @@ def current_connection(state:State,+connection:U32,+peer:String) -> Bool:
     case State{Connected{current,identity},_,_,_,_,_,_,+allowIncoming}: Bool.and(U32.is_eq(current,connection),String.eq(identity,peer))
     case _: False{}
 def connected_event(+state:State,+operation:U32,+connection:U32,+peer:String) -> Out: connected_duplicate(current_connection(state,connection,peer),state,operation,connection,peer)
+def accept_next(available:Bool,+state:State,+offer:U32,+waiting:List<&2,U32>) -> Out:
+  match available state:
+    case True{} State{Available{},+next,epoch,rows,writer,handshake,drain,+allowIncoming}: Out{State{Accepting{U32.add(next,1),offer,waiting},U32.add(next,1),epoch,rows,writer,handshake,drain,allowIncoming},[Accept{offer,U32.add(next,1)}]}
+    case _ _: prepend_effects(refused_offers(offer <> waiting),exhausted(state))
+def accept_waiting(+state:State,waiting:List<&2,U32>) -> Out:
+  match waiting:
+    case []: Out{state,[]}
+    case +offer <> rest: accept_next(allocation_available(state),state,offer,rest)
 def failed_attempt_selected(matching:Bool,+state:State) -> Out:
   match matching state:
     case True{} State{Connecting{_,+request,_,remaining},next,epoch,rows,writer,handshake,drain,+allowIncoming}: join_selected(allocation_available(state),State{Available{},next,epoch,rows,writer,handshake,drain,allowIncoming},request,remaining)
-    case True{} State{Accepting{_,_},next,epoch,rows,writer,handshake,drain,+allowIncoming}: Out{State{Available{},next,epoch,rows,writer,handshake,drain,allowIncoming},[]}
+    case True{} State{Accepting{_,_,waiting},next,epoch,rows,writer,handshake,drain,+allowIncoming}: accept_waiting(State{Available{},next,epoch,rows,writer,handshake,drain,allowIncoming},waiting)
     case _ _: Out{state,[]}
 def failed_attempt(+state:State,operation:U32) -> Out: failed_attempt_selected(attempt_matches(state,operation),state)
 def can_send(+state:State,+bytes:U32) -> Bool: Bool.and(connected(state),Bool.and(U32.is_le(bytes,max_frame_bytes()),Bool.and(Nat.is_lt(pending_count(state),max_pending_messages()),U32.is_le(bytes,U32.sub(max_pending_bytes(),pending_bytes(state))))))
@@ -299,7 +321,7 @@ def expire_selected(due:Bool,+state:State,+timer:Timer,+now:Nat) -> Out:
   match due state timer:
     case True{} State{Creating{_,_,_},_,_,_,_,_,_,+allowIncoming} Timer{_,_,_,Handshake{}}: close(state,NativeFailure{})
     case True{} State{Connecting{_,_,_,_},_,_,_,_,_,_,+allowIncoming} Timer{_,_,_,Handshake{}}: append_effects(disconnect(state),[NotifyTimeout{Handshake{}}])
-    case True{} State{Accepting{_,_},_,_,_,_,_,_,+allowIncoming} Timer{_,_,_,Handshake{}}: append_effects(disconnect(state),[NotifyTimeout{Handshake{}}])
+    case True{} State{Accepting{_,_,_},_,_,_,_,_,_,+allowIncoming} Timer{_,_,_,Handshake{}}: append_effects(disconnect(state),[NotifyTimeout{Handshake{}}])
     case True{} State{phase,next,epoch,rows,writer,_,drain,+allowIncoming} Timer{_,_,_,Handshake{}}: Out{State{phase,next,epoch,rows,writer,None{},drain,allowIncoming},[NotifyTimeout{Handshake{}}]}
     case True{} State{phase,next,epoch,rows,writer,handshake,_,+allowIncoming} Timer{_,_,_,kind}: Out{State{phase,next,epoch,rows,writer,handshake,None{},allowIncoming},[NotifyTimeout{kind}]}
     case False{} _ Timer{id,started,duration,_}: Out{state,[Schedule{id,U32.from_nat(Nat.sub(U32.to_nat(duration),timer_elapsed(now,started)))}]}
@@ -328,7 +350,7 @@ def join_timed(+out:Out,+now:Nat) -> Out:
     case _: out
 def room_selected(allowed:Bool,+state:State) -> Out:
   match allowed state:
-    case False{} State{Accepting{_,_},next,epoch,rows,writer,handshake,drain,_}: disconnect(State{phase(state),next,epoch,rows,writer,handshake,drain,False{}})
+    case False{} State{Accepting{_,_,_},next,epoch,rows,writer,handshake,drain,_}: disconnect(State{phase(state),next,epoch,rows,writer,handshake,drain,False{}})
     case _ State{phase,next,epoch,rows,writer,handshake,drain,_}: Out{State{phase,next,epoch,rows,writer,handshake,drain,allowed},[]}
 def room(state:State,terminal:Bool,lobby:L.State,seat:U32) -> Out: room_selected(Bool.and(Bool.not(terminal),L.admit(lobby,seat)),state)
 def step(+state:State,event:Signal,+now:Nat) -> Out:

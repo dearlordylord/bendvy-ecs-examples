@@ -46,3 +46,12 @@ def L.oversized_frame_refused(connection,peer): {==}
 def L.disconnect_retains_room_drain(connection,peer,next,drain): {==}
 
 def L.guest_creation_keeps_attempt_budget(state): {==}
+def L.waiting_offer_budget_exact(): {==}
+def L.accepting_retains_another_offer(operation,current,offer): {==}
+def L.full_offer_budget_refuses(operation,current,waiting,offer): {==}
+def L.failed_accept_tries_oldest(operation,current,offer,waiting): {==}
+def L.authenticated_accept_refuses_waiting(operation,current,waiting,connection,peer): {==}
+def L.cancelled_accept_refuses_waiting(operation,current,waiting):
+  match waiting:
+    case Nil{}: {==}
+    case Con{offer,rest}: Equal.cong(List<&2,T.Effect>,List<&2,T.Effect>,effects => T.Refuse{offer} <> effects,List.append(&2,T.Effect,List.append(&2,T.Effect,T.refused_offers(rest),[]),[]),List.append(&2,T.Effect,T.refused_offers(rest),[]),L.cancelled_accept_refuses_waiting(operation,current,rest))
