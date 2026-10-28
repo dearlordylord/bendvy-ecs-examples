@@ -4,7 +4,7 @@ import type { WorkerRequest, WorkerReply } from "./coop-boundary.mts"
 import { decodeControlFrame } from "./coop-control-frame.mts"
 import { encodeSnapshot } from "./coop-snapshot-codec.mts"
 import { encodeInvitation, encodeLobby, type PartyLobby } from "./coop-party-wire.mts"
-import { defined, errorMessage } from "./host-values.mts"
+import { defined, errorMessage, list } from "./host-values.mts"
 import Connection from "./dist/coop-connection.mjs"
 import ClientDelivery from "./dist/coop-client-delivery.mjs"
 import Finish from "./dist/coop-finish.mjs"
@@ -19,7 +19,6 @@ interface Seat {
   flow: BendABI.CoopSnapshotFlow.State
   latest: Extract<WorkerReply, { type: "remote-frame" }> | null
   terminal: { token: number; observation: number; applied: boolean } | null
-  deadline: ReturnType<typeof setTimeout> | undefined
 }
 interface HostCallbacks {
   finished: () => void
@@ -35,7 +34,6 @@ export class CoopHost {
   #closed = false
   #finish = Finish.fresh()
   #terminalObservation: number | null = null
-  #finishDeadline: ReturnType<typeof setTimeout> | undefined
   #pending = new Map<number, number>()
   #delivery = 0
   #callbacks: HostCallbacks
@@ -58,8 +56,17 @@ export class CoopHost {
       this.fail("The host simulation failed. Create a new room.")
     }
   }
-  static async create(setup: CoopSetup, session: number, seed: number, runId: string, callbacks: HostCallbacks) {
+  static async create(
+    setup: CoopSetup,
+    session: number,
+    seed: number,
+    runId: string,
+    callbacks: HostCallbacks,
+    signal?: AbortSignal
+  ) {
     const host = new CoopHost(callbacks)
+    const abort = () => host.close()
+    signal?.addEventListener("abort", abort, { once: true })
     try {
       for (const player of [1, 2, 3]) {
         const seat: Seat = {
@@ -70,15 +77,18 @@ export class CoopHost {
           gate: Connection.fresh({ $: "Host" }),
           flow: SnapshotFlow.fresh(0),
           latest: null,
-          terminal: null,
-          deadline: undefined
+          terminal: null
         }
         host.#seats.push(seat)
-        const transport = await CoopTransport.create((event) => {
-          void host.#event(seat, event).catch((error: unknown) => {
-            if (event.connectionEpoch === seat.epoch) host.#fail(seat, error)
-          })
-        })
+        const transport = await CoopTransport.create(
+          (event) => {
+            void host.#event(seat, event).catch((error: unknown) => {
+              if (event.connectionEpoch === seat.epoch) host.#fail(seat, error)
+            })
+          },
+          undefined,
+          signal ? { signal } : {}
+        )
         if (host.#closed) {
           transport.close()
           throw Error("Room creation cancelled.")
@@ -90,6 +100,8 @@ export class CoopHost {
     } catch (error) {
       host.close()
       throw error
+    } finally {
+      signal?.removeEventListener("abort", abort)
     }
   }
   #post(message: WorkerRequest) {
@@ -132,24 +144,12 @@ export class CoopHost {
   async #event(seat: Seat, event: TransportEvent) {
     if (this.#closed) return
     if (event.type === "connected") {
-      if (this.#terminalObservation !== null) {
-        seat.transport?.disconnectPeer()
-        return
-      }
-      if (this.#lobby?.started && !this.#lobby.players.some((row) => row.player === seat.player)) {
-        seat.transport?.disconnectPeer()
-        return
-      }
       seat.epoch = event.connectionEpoch
       seat.connected = true
       seat.latest = null
       seat.gate = Connection.state(Connection.reconnect(seat.gate, seat.epoch))
       seat.flow = SnapshotFlow.fresh(Connection.epoch(seat.gate))
-      clearTimeout(seat.deadline)
-      const epoch = seat.epoch
-      seat.deadline = setTimeout(() => {
-        if (seat.connected && seat.epoch === epoch) this.#signal(seat, { $: "Timeout" })
-      }, 45000)
+      seat.transport?.syncReadiness(seat.gate)
       this.#post({ type: "connected", player: seat.player, connectionEpoch: seat.epoch })
     } else if (event.type === "message") {
       if (!seat.connected || event.connectionEpoch !== seat.epoch) return
@@ -189,11 +189,16 @@ export class CoopHost {
       if (this.#terminalObservation !== null) return
       if (packet.commands.$ !== "Nil" && !this.#command(text, seat.player, seat.epoch))
         this.#signal(seat, { $: "Reject", reason: { $: "ProtocolError" } })
+    } else if (event.type === "timeout") {
+      if (event.kind === "handshake") this.#signal(seat, { $: "Timeout" })
+      else {
+        this.#finish = Finish.expire(this.#finish)
+        this.#finishIfReady()
+      }
     } else if (event.type === "disconnected") {
       seat.epoch = event.connectionEpoch
       seat.connected = false
       seat.latest = null
-      clearTimeout(seat.deadline)
       if (this.#terminalObservation !== null) return
       this.#post({ type: "disconnect", player: seat.player, connectionEpoch: seat.epoch })
     } else if (event.type === "error") this.#fail(seat, Error(event.message))
@@ -203,7 +208,10 @@ export class CoopHost {
       this.#callbacks.invitation(encodeInvitation(this.#seats.map((seat) => defined(seat.transport).invitation())))
     } else if (message.type === "command-consumed") this.#pending.delete(message.deliveryId)
     else if (message.type === "frame") {
-      if (Finish.terminal(message.frame.phase)) this.#terminalObservation = message.observationSeq
+      if (Finish.terminal(message.frame.phase)) {
+        this.#terminalObservation = message.observationSeq
+        this.#updateAdmission()
+      }
       this.#callbacks.frame(message)
     } else if (message.type === "finished") {
       this.#worker.terminate()
@@ -213,13 +221,11 @@ export class CoopHost {
         this.#finish,
         this.#seats.filter((seat) => seat.terminal && !seat.terminal.applied).length
       )
-      this.#finishDeadline = setTimeout(() => {
-        this.#finish = Finish.expire(this.#finish)
-        this.#finishIfReady()
-      }, Finish.drain_milliseconds())
+      this.#seats[0]?.transport?.beginDrain()
       this.#finishIfReady()
     } else if (message.type === "lobby") {
       this.#lobby = message
+      this.#updateAdmission()
       this.#callbacks.lobby(message)
       for (const seat of this.#seats)
         if (seat.connected) {
@@ -244,7 +250,7 @@ export class CoopHost {
       if (!seat || !seat.connected || seat.epoch !== message.connectionEpoch) return
       seat.gate = message.state
       const action = message.action
-      if (action.$ === "StartAndConfirm") clearTimeout(seat.deadline)
+      seat.transport?.syncReadiness(seat.gate)
       if (["SendHello", "StartAndConfirm", "CloseConnection"].includes(action.$)) {
         const epoch = seat.epoch
         void defined(seat.transport)
@@ -285,15 +291,32 @@ export class CoopHost {
         if (epoch === seat.epoch) this.#fail(seat, error)
       })
   }
+  #updateAdmission() {
+    const lobby = this.#lobby
+    if (!lobby) return
+    const state: BendABI.CoopLobby.State = {
+      $: "State",
+      started: lobby.started,
+      inputEpoch: lobby.inputEpoch,
+      seats: list(
+        lobby.players.map((row) => ({
+          $: "Seat",
+          player: row.player,
+          character: row.character,
+          ready: row.ready,
+          connected: row.connected
+        }))
+      )
+    }
+    for (const seat of this.#seats) seat.transport?.updateRoom(state, seat.player, this.#terminalObservation !== null)
+  }
   #finishIfReady() {
     if (Finish.closed(this.#finish)) this.close()
   }
   close() {
-    clearTimeout(this.#finishDeadline)
     this.#closed = true
     this.#worker.terminate()
     for (const seat of this.#seats) {
-      clearTimeout(seat.deadline)
       seat.transport?.close()
     }
     this.#pending.clear()

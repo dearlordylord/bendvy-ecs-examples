@@ -196,9 +196,6 @@ export class CoopUI {
       })
     }
     this.updateSetup()
-    if (join) {
-      this.status("Joining the party automatically…", { busy: true })
-    }
     on(this.$("#coop-setup-preview"), "click", (event) => this.selectSetup(event))
     on(this.$("#coop-host"), "click", () => this.invoke(() => this.callbacks.onHost?.(this.setup())))
     on(this.$("#coop-start"), "click", () => this.invoke(() => this.callbacks.onStart?.()))
@@ -481,6 +478,7 @@ export class CoopUI {
     this.$("#coop-status").dataset.error = String(error)
     this.$("#coop-play-status").textContent = text
     this.$("#coop-retry").hidden = !error
+    if (error) this.$("#coop-retry").textContent = "Retry connection"
     for (const selector of ["#coop-host", "#coop-retry"])
       defined(this.document.querySelector<HTMLButtonElement>(selector)).disabled = busy
     this.$("#coop-lobby").setAttribute("aria-busy", String(busy))
@@ -724,9 +722,13 @@ export class CoopUI {
     this.updateSetup()
     this.status(
       this.entryRole === "guest"
-        ? "Opening an invitation joins the party automatically."
+        ? "Choose your survivor, then select Join party to connect."
         : "Choose your survivor to begin."
     )
+    if (this.entryRole === "guest") {
+      this.$("#coop-retry").textContent = "Join party"
+      this.$("#coop-retry").hidden = false
+    }
   }
   dispose() {
     this.clearInput()

@@ -18,6 +18,7 @@ const browser = await chromium.launch({
   ]
 })
 const pages: Page[] = []
+const nativeLoads = new WeakMap<Page, { count: number }>()
 async function page(url: string, profile?: Profile) {
   const context = await browser.newContext()
   if (profile)
@@ -43,6 +44,11 @@ async function page(url: string, profile?: Profile) {
     }
   })
   const page = await context.newPage()
+  const loads = { count: 0 }
+  nativeLoads.set(page, loads)
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname.endsWith("/iroh/iroh_transport.js")) loads.count++
+  })
   pages.push(page)
   page.on("pageerror", (e) => console.log("PAGEERROR", e.message))
   await page.goto(url)
@@ -78,8 +84,22 @@ try {
   })
   const guests: Page[] = []
   for (let i = 0; i < 3; i++) {
-    const guest = await page(invite, i === 0 ? guestProfile : undefined)
-    assert.equal(await guest.locator("#coop-join").count(), 0)
+    const invitation = new URL(invite)
+    if (i === 1) {
+      invitation.hash = new URLSearchParams({ join: defined(invitation.searchParams.get("join")) }).toString()
+      invitation.searchParams.delete("join")
+    }
+    const guest = await page(invitation.href, i === 0 ? guestProfile : undefined)
+    await guest.getByRole("button", { name: "Join party", exact: true }).waitFor()
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+    assert.equal(await host.locator('#coop-party-roster [data-ready="true"]').count(), i + 1)
+    assert.equal(new URL(guest.url()).searchParams.has("seat"), false)
+    assert.equal(
+      defined(nativeLoads.get(guest)).count,
+      0,
+      "Invitation previews must not load the native endpoint factory"
+    )
+    await guest.getByRole("button", { name: "Join party", exact: true }).click()
     guests.push(guest)
     await host.waitForFunction(
       (n) => document.querySelectorAll('#coop-party-roster [data-ready="true"]').length >= n,
@@ -87,6 +107,7 @@ try {
       { timeout: 90000 }
     )
     console.log("joined", i + 1, await status(guest))
+    assert.ok(defined(nativeLoads.get(guest)).count > 0, "Joining must execute the real Iroh adapter")
     if (i === 0) {
       await guest.waitForFunction(() => document.querySelector("#coop-setup-preview .stage-art-1"))
       await host.locator('[data-menu-panel="stage"]').click()
@@ -125,7 +146,7 @@ try {
   assert.equal(await host.locator("#coop-play").isVisible(), false)
   assert.equal(await host.locator("#coop-start").isEnabled(), true)
   const fifth = await page(invite)
-  assert.equal(await fifth.locator("#coop-join").count(), 0)
+  await fifth.getByRole("button", { name: "Join party", exact: true }).click()
   await fifth.waitForFunction(
     () =>
       document.querySelector("#coop-status")?.textContent.includes("full") ||
@@ -173,7 +194,11 @@ try {
   assert.equal(await host.locator("#coop-clock").innerText(), stopped)
   console.log("shared paused", stopped)
   const returned = await page(rejoin)
-  assert.equal(await returned.locator("#coop-join").count(), 0)
+  await returned.getByRole("button", { name: "Join party", exact: true }).waitFor()
+  assert.equal(defined(nativeLoads.get(returned)).count, 0, "Reserved-seat previews must not create an endpoint")
+  await new Promise((resolve) => setTimeout(resolve, 1000))
+  assert.equal(await host.locator("#coop-clock").innerText(), stopped)
+  await returned.getByRole("button", { name: "Join party", exact: true }).click()
   await returned.locator("#coop-play").waitFor({ state: "visible", timeout: 45000 })
   await host.waitForFunction(() => !document.querySelector("#coop-play-status")?.textContent.includes("paused"), null, {
     timeout: 30000
@@ -189,7 +214,9 @@ try {
     assert.equal(await p.locator(".coop-diagnostic:visible").count(), 0)
     await p.screenshot({ path: `/tmp/network4-${pages.indexOf(p)}.png` })
   }
-  console.log("PASS real Iroh four-player lobby, explicit start, capacity, shared pause and reserved-seat rejoin")
+  console.log(
+    "PASS real Iroh four-player lobby, explicit join and start, capacity, shared pause and reserved-seat rejoin"
+  )
 } finally {
   await browser.close()
 }

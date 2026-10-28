@@ -8,23 +8,29 @@ transports bytes. Bend decides the meaning and acceptance of application message
 ```js
 import init, { Transport } from './iroh_transport.js';
 await init();
-const endpoint = await Transport.create(event => {
-  // type: ready, connecting, connected, message, disconnected, error, closed
-  // peerId: authenticated Iroh endpoint ID when present
-  // bytes: Uint8Array for message; message: diagnostic text when present
-  // path: "relay" is the documented browser constraint, not a measured native path
-  // relayUrl: configured self-hosted relay URL
-});
+const endpoint = await Transport.create(event => owner.enqueue(event));
 const invite = endpoint.invitation();
-// On the other endpoint:
-await endpoint.join(invite);
-await endpoint.send(new Uint8Array([1, 2, 3]), false);
+await endpoint.join(invite, operationId);
+await endpoint.acceptOffer(offerId, operationId);
+endpoint.refuseOffer(offerId);
+await endpoint.send(new Uint8Array([1, 2, 3]), false, connectionId);
+endpoint.disconnectPeer(connectionId);
 endpoint.close();
 ```
 
-Each endpoint automatically accepts one remote peer. `disconnectPeer()` closes only its current connection and retains the invitation.
+Incoming attempts produce opaque `incoming` offers. Bend chooses acceptance or
+refusal. Each offer is single-use and expires after 20 seconds. Offers do not
+provide an authenticated player identity. Successful Iroh authentication produces
+`connected` with `operationId`, `connectionId`, and authenticated `peerId`.
+Messages and departures carry that connection ID. Promise rejection reports the
+outcome of the requested operation, rather than an unscoped callback error.
+
+An endpoint holds one authenticated connection. `disconnectPeer(connectionId)`
+closes only that connection and retains the invitation. Zero or an omitted ID
+cancels its current pending operation or connection. A stale nonzero ID cannot
+disconnect a replacement connection.
 Recreate a closed endpoint;
-it cannot be rebound. Another peer is refused while connected/connecting. A peer
+it cannot be rebound. Bend refuses another offer while connected or connecting. A peer
 disconnect leaves a still-open endpoint available for another connection. The
 invitation serializes the endpoint ID and addressing information, not a private
 key or a game authorization grant. Application admission belongs to the Bend
@@ -42,7 +48,11 @@ a pinned implementation dependency, not a general claim of cross-stream ordering
 for every QUIC library. Review it when upgrading Noq or use a persistent framed
 stream instead.
 
-The adapter rejects sends above 1048576 bytes (1 MiB) and more than 16 concurrent sends.
+The native adapter rejects sends above 1048576 bytes (1 MiB), more than 16
+concurrent sends, and more than 4 MiB of retained send bytes. It bounds stored
+incoming offers and pending connection operations to sixteen each. These limits
+also apply to callers that bypass Bend. One abortable expiry task services the
+offer store. Closing releases stored offers, connections, callbacks and tasks.
 Creating/connecting and incomplete incoming/outgoing frames have 20-second limits;
 an idle healthy connection is not timed out by the application. Oversized or
 stalled receive streams close that connection. Browser endpoints use only our
@@ -74,16 +84,32 @@ From the repository root:
 CARGO_TARGET_DIR=/tmp/bendvy-iroh-cargo-target cargo test --locked --features native-probe --manifest-path tools/iroh-transport/Cargo.toml --jobs 2
 ```
 
+After serving a fresh Survivors build, run the browser boundary checks:
+
+```sh
+node examples/survivors/coop-transport-native-check.mts http://127.0.0.1:8713/coop.html
+CARGO_TARGET_DIR=/tmp/bendvy-iroh-cargo-target cargo build --locked --features native-probe --bin iroh-native-probe --manifest-path tools/iroh-transport/Cargo.toml --jobs 2
+node examples/survivors/coop-transport-watchdog-check.mts http://127.0.0.1:8713/coop.html /tmp/bendvy-iroh-cargo-target/debug/iroh-native-probe
+```
+
+The watchdog check uses native fault peers to bypass browser send admission. Its
+`--fault oversized` and `--fault stalled` modes read the invitation from standard
+input and do not print it. The check exercises receive bounds, stalled streams,
+offer saturation and expiry, and endpoint reuse over actual Iroh.
+
 The optional `iroh-native-probe` binary is a byte echo diagnostic, not a game
 server or native Bend/Iroh FFI. Its loopback checks cover ordering and frame bounds;
 they do not qualify macOS or cross-network direct connectivity.
 
 ## Game boundary
 
-`examples/survivors/coop-transport.mts` copies queued payloads, serializes writes,
-binds incoming events to the authenticated peer and invalidates stale sends.
-Its queue is bounded to 16 messages / 4 MiB, with a 1 MiB frame limit in JS and
-Rust. Normal sends do not wait for an acknowledgment. The optional
+`examples/survivors/coop-transport-policy.bend` owns transport transitions,
+identified operations, incoming admission and ordered send scheduling.
+`coop-transport.mts` executes its effects through Rust and returns identified
+outcomes. It copies byte payloads and serializes callbacks through one owner.
+The send queue includes the active write within 16 messages and 4 MiB. The
+callback bridge also has count and byte bounds. Both browser and Rust enforce
+the 1 MiB frame ceiling. Normal sends do not wait for an acknowledgment. The optional
 `confirmDelivery` adapter flag (second boolean argument in the Wasm API) waits
 for QUIC to acknowledge the finished stream before a rejection closes the peer.
 This is a transport receipt, not proof that the application processed it; ordinary

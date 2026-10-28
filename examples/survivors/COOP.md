@@ -2,7 +2,7 @@
 
 This mode supports two to four players, including the host. Open `coop.html`,
 choose setup and **Create room**, then share the invitation with up to three friends.
-Opening an invitation joins automatically. Guests can change their survivor and arcana in the lobby until the host starts. The lobby shows all four
+Opening an invitation shows the setup screen. Select **Join party** to connect; loading or previewing the link does not reserve a seat. Guests can change their survivor and arcana in the lobby until the host starts. The lobby shows all four
 seats and their readiness. The host selects **Start run** when at least two players
 are ready. The roster closes when the run starts. Players install nothing. Keep the host page
 open; browser Iroh uses relays. Move with WASD, arrows or the touch pad. Attacks
@@ -21,7 +21,7 @@ and 180 ticks of invulnerability. The timer stops during reward and connection
 pauses. If all players die together, the match ends. The host keeps the shared
 world in memory. A guest reload can rejoin through the same invitation;
 closing or reloading the host loses that run. There is no host migration.
-A departing guest pauses the shared run. Reload the same guest URL to reclaim its
+A departing guest pauses the shared run. Reload the same guest URL and select **Join party** to reclaim its
 reserved seat; the URL keeps a seat number after joining. Invitations are bearer
 capabilities, so anyone holding a reserved seat link can reclaim it when free.
 

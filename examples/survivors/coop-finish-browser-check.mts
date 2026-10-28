@@ -5,7 +5,8 @@ const browser = await chromium.launch({
   headless: true,
   args: ["--no-sandbox", "--disable-background-timer-throttling", "--disable-renderer-backgrounding"]
 })
-const stalledReceipt = process.argv.includes("--stalled-receipt")
+const departFirstSeat = process.argv.includes("--depart-first-seat")
+const stalledReceipt = process.argv.includes("--stalled-receipt") || departFirstSeat
 const base = process.argv[2] ?? "http://127.0.0.1:8718/"
 try {
   const context = await browser.newContext()
@@ -73,7 +74,9 @@ try {
   await host.locator("#coop-invite-close").click()
   const guests: Page[] = []
   for (let i = 0; i < 3; i++) {
-    guests.push(await open(invitation, stalledReceipt && i === 0))
+    const guest = await open(invitation, stalledReceipt && i === (departFirstSeat ? 1 : 0))
+    guests.push(guest)
+    await guest.getByRole("button", { name: "Join party", exact: true }).click()
     await host.waitForFunction(
       (n) => document.querySelectorAll('#coop-party-roster [data-ready="true"]').length === n,
       i + 2,
@@ -87,6 +90,9 @@ try {
     })
     assert.match(await p.locator("#coop-offers").innerText(), /Saved to this browser/)
   }
+  if (departFirstSeat) await guests[0]?.close()
+  const remainingGuests = departFirstSeat ? guests.slice(1) : guests
+  const remainingPages = [host, ...remainingGuests]
   if (stalledReceipt) {
     await new Promise((resolve) => setTimeout(resolve, 6500))
     assert.equal(
@@ -94,16 +100,16 @@ try {
       0,
       "Forged final receipt cannot close the room"
     )
-    for (const p of guests)
+    for (const p of remainingGuests)
       assert.doesNotMatch(await p.locator("#coop-play-status").innerText(), /waiting|disconnected|paused|failed/i)
   }
   await host.waitForFunction(() => Number(document.documentElement.dataset.closes) === 3, null, { timeout: 25000 })
   assert.equal(await host.evaluate(() => document.documentElement.dataset.workerFinished), "true")
   assert.equal(await host.evaluate(() => document.documentElement.dataset.workerTerminated), "true")
-  for (const p of guests)
+  for (const p of remainingGuests)
     await p.waitForFunction(() => Number(document.documentElement.dataset.closes) >= 1, null, { timeout: 25000 })
   const after = await Promise.all(
-    [host, ...guests].map(async (p) =>
+    remainingPages.map(async (p) =>
       p.evaluate(() => ({
         profile: localStorage.getItem("nightfall-survivors-v1"),
         sends: document.documentElement.dataset.sends
@@ -111,7 +117,7 @@ try {
     )
   )
   await new Promise((resolve) => setTimeout(resolve, 1500))
-  for (const [i, p] of [host, ...guests].entries()) {
+  for (const [i, p] of remainingPages.entries()) {
     assert.equal(await p.locator("#coop-reward-kind").textContent(), "Run complete")
     assert.equal(
       await p.evaluate(() => localStorage.getItem("nightfall-survivors-v1")),
@@ -126,7 +132,11 @@ try {
     assert.doesNotMatch(await p.locator("#coop-play-status").innerText(), /disconnected|paused|failed/i)
   }
   console.log(
-    stalledReceipt ? "Bounded deadline with forged final receipt passed" : "All final application receipts admitted"
+    departFirstSeat
+      ? "Room drain survived first-seat departure and another forged final receipt"
+      : stalledReceipt
+        ? "Bounded deadline with forged final receipt passed"
+        : "All final application receipts admitted"
   )
   console.log(
     "Real Iroh terminal delivery passed for all three guests; results and profiles preserved; three host endpoints closed; worker terminated; traffic stopped"

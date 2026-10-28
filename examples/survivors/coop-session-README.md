@@ -86,7 +86,7 @@ A guest transport departure suspends the shared run without disconnecting the
 stored player record or discarding its reward choice. The host keeps its Iroh
 endpoint and invitation open. A new connection resets only the guest command
 lane, receipt and queued inputs; the host lane, session ID and simulation state
-remain intact. Opening an invitation automatically joins its available or reserved seat. Before the run starts, admitted Setup updates rebuild the untouched lobby world from the host seed and each guest's selected setup. After start, Setup only attaches or resumes the existing player.
+remain intact. Opening an invitation waits for an explicit **Join party** action before joining its available or reserved seat. Before the run starts, admitted Setup updates rebuild the untouched lobby world from the host seed and each guest's selected setup. After start, Setup only attaches or resumes the existing player.
 Rejoining returns the existing character, health, equipment and reward state,
 regardless of the setup selected on the reloaded page. The snapshot rebuilds the
 guest's prediction from current authority instead of replaying old local input.

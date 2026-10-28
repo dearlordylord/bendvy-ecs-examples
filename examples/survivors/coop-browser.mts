@@ -36,16 +36,15 @@ let transport: CoopTransport | null = null,
   tick = 0,
   epoch = 0
 let runFinished = false
-let finishDeadline: ReturnType<typeof setTimeout> | undefined
 let activeSnapshotDecoder: SnapshotDecoder | null = null
+let creationAbort: AbortController | null = null
 let runId = "",
   stalled = false
 let input = { x: 0, y: 0 },
   inputTimer: ReturnType<typeof setInterval> | undefined,
   lastFrameAt = 0,
   connected = false
-let connectionEpoch = 0,
-  connectDeadline: ReturnType<typeof setTimeout> | undefined
+let connectionEpoch = 0
 let connectionState = Connection.fresh({ $: "Guest" }),
   selectedSetup: CoopSetup,
   hostFrame: Frame | null
@@ -429,6 +428,7 @@ function signalConnection(signal: BendABI.CoopConnection.Signal, envelope?: Snap
   }
   const result = Connection.step(connectionState, Connection.epoch(connectionState), signal)
   connectionState = result.state
+  transport?.syncReadiness(connectionState)
   connectionAction(result.action, envelope)
 }
 function transportFailure(error: unknown) {
@@ -494,12 +494,10 @@ function connectionAction(action: BendABI.CoopConnection.Action, envelope?: Snap
         if (Finish.terminal(frame.phase)) {
           runFinished = true
           clearInterval(inputTimer)
-          clearTimeout(connectDeadline)
           ui.clearInput()
           prediction = null
           flushClientDelivery()
-          clearTimeout(finishDeadline)
-          finishDeadline = setTimeout(() => transport?.close(), Finish.drain_milliseconds() + 5000)
+          transport?.beginDrain(true)
         }
       } catch (error) {
         console.error(error)
@@ -512,14 +510,12 @@ function connectionAction(action: BendABI.CoopConnection.Action, envelope?: Snap
       sendControl(action).catch(() => {})
       break
     case "StartAndConfirm":
-      clearTimeout(connectDeadline)
       if (hostFrame) ui.present({ ...defined(hostFrame), runId })
       ui.setChoicePending(false)
       ui.status("")
       sendControl(action).catch(() => {})
       break
     case "GuestReady":
-      clearTimeout(connectDeadline)
       predictionClock = ClientClock.fresh(micros(performance.now()))
       ui.setChoicePending(false)
       ui.status("")
@@ -535,7 +531,6 @@ function connectionAction(action: BendABI.CoopConnection.Action, envelope?: Snap
       )
       break
     case "CloseConnection": {
-      clearTimeout(connectDeadline)
       clearInterval(inputTimer)
       prediction = null
       authorityFrame = null
@@ -565,18 +560,6 @@ function connectionAction(action: BendABI.CoopConnection.Action, envelope?: Snap
       break
     }
   }
-}
-function armConnectionDeadline() {
-  clearTimeout(connectDeadline)
-  const generation = epoch,
-    connection = connectionEpoch
-  connectDeadline = setTimeout(() => {
-    if (generation !== epoch || connection !== connectionEpoch) return
-    // The browser owns the IO deadline; it cannot rely on an unresponsive worker.
-    const result = Connection.step(connectionState, Connection.epoch(connectionState), { $: "Timeout" })
-    connectionState = result.state
-    connectionAction(result.action)
-  }, 45000)
 }
 function sendAction(action: BendABI.CoopSession.Action) {
   if (runFinished) return
@@ -668,6 +651,8 @@ async function connect(
   cleanup()
   ui.reset()
   const generation = epoch
+  const abort = new AbortController()
+  creationAbort = abort
   role = kind
   ui.role(kind)
   sequence = 0
@@ -681,46 +666,61 @@ async function connect(
   ui.status("Connecting to Iroh…", { busy: true })
   if (kind === "host") {
     runId = crypto.randomUUID()
-    const created = await CoopHost.create(setup, sessionId, random(), runId, {
-      finished: () => {
-        if (generation !== epoch) return
-        runFinished = true
-        clearInterval(inputTimer)
-        ui.clearInput()
-      },
-      frame: (message) => {
-        if (generation !== epoch) return
-        tick = message.frame.tick
-        hostFrame = { ...message.frame, observationSeq: message.observationSeq, contactJournal: message.contactJournal }
-        if (roomStarted) ui.present({ ...hostFrame, runId })
-        ui.setChoicePending(!message.connectionReady)
-      },
-      lobby: (lobby) => {
-        if (generation !== epoch) return
-        roomStarted = lobby.started
-        roomRunning = lobby.running
-        ui.lobby(lobby)
-        if (roomStarted) ui.status(roomRunning ? "" : "Waiting for all teammates to rejoin. The run is paused.")
-        if (roomStarted && hostFrame) ui.present({ ...hostFrame, runId })
-      },
-      invitation: (ticket) => {
-        if (generation !== epoch) return
-        const link = new URL(location.href)
-        link.search = ""
-        link.searchParams.set("session", String(sessionId))
-        link.searchParams.set("join", ticket)
-        ui.invitation(link.href)
-      },
-      status: (message, error = false) => {
-        if (generation === epoch) ui.status(message, { error })
-      },
-      error: (error) => {
-        if (generation === epoch) {
-          reportFailure(error, "host")
-          showError(error)
+    const created = await CoopHost.create(
+      setup,
+      sessionId,
+      random(),
+      runId,
+      {
+        finished: () => {
+          if (generation !== epoch) return
+          runFinished = true
+          clearInterval(inputTimer)
+          ui.clearInput()
+        },
+        frame: (message) => {
+          if (generation !== epoch) return
+          tick = message.frame.tick
+          hostFrame = {
+            ...message.frame,
+            observationSeq: message.observationSeq,
+            contactJournal: message.contactJournal
+          }
+          if (roomStarted) ui.present({ ...hostFrame, runId })
+          ui.setChoicePending(!message.connectionReady)
+        },
+        lobby: (lobby) => {
+          if (generation !== epoch) return
+          roomStarted = lobby.started
+          roomRunning = lobby.running
+          ui.lobby(lobby)
+          if (roomStarted) ui.status(roomRunning ? "" : "Waiting for all teammates to rejoin. The run is paused.")
+          if (roomStarted && hostFrame) ui.present({ ...hostFrame, runId })
+        },
+        invitation: (ticket) => {
+          if (generation !== epoch) return
+          const link = new URL(location.href)
+          link.search = ""
+          link.searchParams.set("session", String(sessionId))
+          link.searchParams.set("join", ticket)
+          ui.invitation(link.href)
+        },
+        status: (message, error = false) => {
+          if (generation === epoch) ui.status(message, { error })
+        },
+        error: (error) => {
+          if (generation === epoch) {
+            reportFailure(error, "host")
+            showError(error)
+          }
         }
-      }
+      },
+      abort.signal
+    ).catch((error: unknown) => {
+      if (generation !== epoch) return null
+      throw error
     })
+    if (!created) return
     if (generation !== epoch) {
       created.close()
       return
@@ -735,8 +735,11 @@ async function connect(
   connectionState = Connection.fresh({ $: "Guest" })
   let snapshotDecoder = new SnapshotDecoder()
   activeSnapshotDecoder = snapshotDecoder
-  armConnectionDeadline()
   try {
+    const seats = invitationSeats(defined(ticket))
+    const savedSeat = new URL(location.href).searchParams.get("seat")
+    const candidates = savedSeat === null ? seats : seats.filter((seat) => seat.player === Number(savedSeat))
+    if (!candidates.length) throw Error("Invalid reserved party seat.")
     const handleEvent = async (event: TransportEvent) => {
       if (generation !== epoch) return
       if (event.type === "connected") {
@@ -744,6 +747,7 @@ async function connect(
           transport?.close()
           return
         }
+        ownPlayer = at(candidates, event.candidate).player
         connectionEpoch = event.connectionEpoch
         snapshotDecoder.close()
         snapshotDecoder = new SnapshotDecoder()
@@ -752,9 +756,9 @@ async function connect(
         connected = true
         lastFrameAt = performance.now()
         clearInterval(inputTimer)
-        armConnectionDeadline()
         const result = Connection.reconnect(connectionState, connectionEpoch)
         connectionState = result.state
+        transport?.syncReadiness(connectionState)
         connectionAction(result.action)
         ui.status("Connected. Checking party compatibility…", { busy: true })
         inputTimer = setInterval(() => {
@@ -814,41 +818,36 @@ async function connect(
         localRun = null
         clearInterval(inputTimer)
         ui.clearInput()
-        clearTimeout(connectDeadline)
         if (runFinished) {
-          clearTimeout(finishDeadline)
           transport?.close()
           return
         }
         signalConnection({ $: "Lost" })
+      } else if (event.type === "timeout") {
+        if (event.kind === "drain") transport?.close()
+        else signalConnection({ $: "Timeout" })
       } else if (event.type === "error") transportFailure(Error(event.message))
     }
-    const created = await CoopTransport.create((event) => {
-      void handleEvent(event).catch((error: unknown) => {
-        if (generation === epoch) transportFailure(error)
-      })
-    })
+    const created = await CoopTransport.create(
+      (event) => {
+        void handleEvent(event).catch((error: unknown) => {
+          if (generation === epoch) transportFailure(error)
+        })
+      },
+      undefined,
+      { role: "guest", signal: abort.signal }
+    )
     if (generation !== epoch) {
       created.close()
       return
     }
     transport = created
-    const seats = invitationSeats(defined(ticket))
-    const savedSeat = new URL(location.href).searchParams.get("seat")
-    const candidates = savedSeat === null ? seats : seats.filter((seat) => seat.player === Number(savedSeat))
-    if (!candidates.length) throw Error("Invalid reserved party seat.")
-    let joined = false
-    for (const seat of candidates) {
-      ownPlayer = seat.player
-      try {
-        await created.join(seat.ticket)
-        joined = true
-        break
-      } catch {
-        /* Try the next available seat. */
-      }
+    try {
+      const selected = await created.joinCandidates(candidates.map((seat) => seat.ticket))
+      ownPlayer = at(candidates, selected).player
+    } catch {
+      throw Error("This party is full or unavailable. Ask the host for a new invitation.")
     }
-    if (!joined) throw Error("This party is full or unavailable. Ask the host for a new invitation.")
     const link = new URL(location.href)
     link.searchParams.set("seat", String(ownPlayer))
     history.replaceState(null, "", link)
@@ -864,8 +863,9 @@ function showError(error: unknown) {
   console.error(error)
 }
 function cleanup() {
+  creationAbort?.abort()
+  creationAbort = null
   runFinished = false
-  clearTimeout(finishDeadline)
   failureDiagnostic = null
   ui.diagnostic(null)
   epoch++
@@ -877,7 +877,6 @@ function cleanup() {
   pendingSetup = null
   roomRunning = false
   inputEpoch = 0
-  clearTimeout(connectDeadline)
   connectionEpoch = 0
   sentCommandTimes.clear()
   stalled = false
@@ -942,7 +941,6 @@ function joinInvitation() {
   if (ticket === null) return
   return connect("guest", ticket, ui.setup(), { session: url.searchParams.get("session") }).catch(showError)
 }
-void joinInvitation()
 // A browser may suspend the host. Surface it; do not claim workers prevent it.
 setInterval(() => {
   if (

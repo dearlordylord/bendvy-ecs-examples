@@ -34,7 +34,7 @@ example_emit "$app_dir/coop-session.bend" "$staging_dir/public/dist/coop-session
 example_emit "$app_dir/coop-protocol.bend" "$staging_dir/public/dist/coop-protocol.mjs"
 example_emit "$app_dir/coop-prediction.bend" "$staging_dir/public/dist/coop-prediction.mjs"
 example_emit "$app_dir/coop-input-queue.bend" "$staging_dir/public/dist/coop-input-queue.mjs"
-for module in coop-finish coop-lobby coop-network coop-client-delivery coop-snapshot-receipts coop-snapshot-flow coop-hit-effects coop-playback coop-playback-wire coop-contact-playback coop-client-clock coop-hit-journal coop-local-projectiles; do
+for module in coop-transport-policy coop-finish coop-lobby coop-network coop-client-delivery coop-snapshot-receipts coop-snapshot-flow coop-hit-effects coop-playback coop-playback-wire coop-contact-playback coop-client-clock coop-hit-journal coop-local-projectiles; do
   example_emit "$app_dir/$module.bend" "$staging_dir/public/dist/$module.mjs"
 done
 bash "$example_repo/tools/iroh-transport/build.sh" "$staging_dir/public/iroh"

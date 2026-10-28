@@ -38,15 +38,27 @@ try {
       coop: [],
       raw: [],
       async createNative(callback) {
+        const endpoint: { native?: object } = {}
+        let operation = 0
         const value: unknown = await method(
           factory,
           "create"
         )((event: unknown) => {
           if (typeof event !== "object" || event === null || !("type" in event) || typeof event.type !== "string")
             throw Error("Invalid transport event")
+          if (event.type === "incoming") {
+            const native = endpoint.native
+            if (!native || !("offerId" in event) || typeof event.offerId !== "number")
+              throw Error("Invalid incoming offer")
+            void Promise.resolve(method(native, "acceptOffer")(event.offerId, ++operation)).catch(() =>
+              callback({ type: "error" })
+            )
+            return
+          }
           callback({ type: event.type })
         })
         if (typeof value !== "object" || value === null) throw Error("Invalid Transport instance")
+        endpoint.native = value
         return {
           native: value,
           close: () => {
@@ -60,7 +72,7 @@ try {
             if (typeof result !== "string") throw Error("Invalid invitation")
             return result
           },
-          join: async (invitation) => method(value, "join")(invitation)
+          join: async (invitation) => method(value, "join")(invitation, ++operation)
         }
       }
     }

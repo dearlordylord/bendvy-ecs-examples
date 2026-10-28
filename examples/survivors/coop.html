@@ -25,7 +25,7 @@
 
 <section id="coop-lobby" aria-labelledby="lobby-title">
 <div class="coop-heading" data-host-ui><div><p class="eyebrow">Co-op</p><h1 id="lobby-title">Better together</h1><p class="muted">Create a room for two to four survivors.</p></div><span id="coop-wallet" class="muted"></span></div>
-<div class="coop-heading" data-guest-ui><div><p class="eyebrow">You’re invited</p><h1>Your party awaits</h1><p class="muted">Joining automatically. Choose your survivor while the host gathers the party.</p></div></div>
+<div class="coop-heading" data-guest-ui><div><p class="eyebrow">You’re invited</p><h1>Your party awaits</h1><p class="muted">Choose your survivor, then select Join party to connect.</p></div></div>
 <div class="coop-layout"><div class="coop-setup-column"><fieldset id="coop-setup-fields"><legend class="sr-only">Your run setup</legend>
 <div id="coop-setup-preview"></div>
 <div hidden><select id="coop-character" aria-label="Survivor"></select><select id="coop-arcana" aria-label="Arcana"></select><select id="coop-stage" aria-label="Stage"></select><select id="coop-mode" aria-label="Mode"></select></div>
@@ -35,7 +35,7 @@
 <div id="coop-host-actions"><button id="coop-host" class="primary start-button" ><span class="cta-surface"><span class="cta-icon" aria-hidden="true"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M11 1A7 7 0 1 0 15 12a6 6 0 0 1-4-11zm2 0h1v2h2v1h-2v2h-1V4h-2V3h2V1z"/></svg></span><span class="cta-label">Create room</span><span class="cta-cap" aria-hidden="true"></span></span></button><p class="coop-note">Have an invitation? Open the link your friend sent.</p></div>
 <div id="coop-room-ready" hidden><button id="coop-start" class="primary start-button" disabled><span class="cta-surface"><span class="cta-label">Start run</span><span class="cta-cap" aria-hidden="true"></span></span></button><button id="coop-invite-again" class="primary start-button" ><span class="cta-surface"><span class="cta-icon" aria-hidden="true"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M11 1A7 7 0 1 0 15 12a6 6 0 0 1-4-11zm2 0h1v2h2v1h-2v2h-1V4h-2V3h2V1z"/></svg></span><span class="cta-label">Invite friends</span><span class="cta-cap" aria-hidden="true"></span></span></button><button id="coop-close-room" class="coop-text-button">Close room</button></div></div>
 <div class="coop-party-heading"><span id="coop-party-count" aria-live="polite"></span></div><div id="coop-party-roster" hidden aria-label="Party members" aria-live="polite"></div>
-<div id="coop-join-panel" data-guest-ui><div class="banner-heading"><p class="eyebrow">Your party</p><h2 id="coop-join-title">Joining the party</h2></div><p id="coop-join-detail" class="muted">Connecting automatically. You can choose your survivor before the host starts.</p><button id="coop-retry" class="coop-secondary" type="button" hidden>Retry connection</button><a id="coop-host-own" class="coop-text-button" href="./coop.html">Host your own party</a></div>
+<div id="coop-join-panel" data-guest-ui><div class="banner-heading"><p class="eyebrow">Your party</p><h2 id="coop-join-title">Join the party</h2></div><p id="coop-join-detail" class="muted">Choose your survivor, then select Join party. Opening this link does not connect you.</p><button id="coop-retry" class="primary" type="button">Join party</button><a id="coop-host-own" class="coop-text-button" href="./coop.html">Host your own party</a></div>
 <p id="coop-status" role="status" aria-live="polite">Choose your survivor to begin.</p>
 </aside></div>
 <footer>WASD / arrows to move · automatic attacks · M for map<br />Touch controls on mobile.</footer>
@@ -50,7 +50,7 @@
       <div id="coop-touch" aria-label="Touch movement"><span aria-hidden="true">✥</span></div>
     </section>
 
-<dialog id="coop-invitation" class="coop-invitation banner-panel" aria-labelledby="coop-invite-title"><button id="coop-invite-close" class="coop-dialog-close" aria-label="Close invitation">×</button><div class="banner-heading"><p class="eyebrow">Your room is ready</p><h2 id="coop-invite-title">Invite your friends</h2></div><p>Share this link with up to three friends. Opening the link joins the room automatically.</p>
+<dialog id="coop-invitation" class="coop-invitation banner-panel" aria-labelledby="coop-invite-title"><button id="coop-invite-close" class="coop-dialog-close" aria-label="Close invitation">×</button><div class="banner-heading"><p class="eyebrow">Your room is ready</p><h2 id="coop-invite-title">Invite your friends</h2></div><p>Share this link with up to three friends. Your friends choose Join party to connect.</p>
 <label for="coop-invite-link">Invitation link</label><input id="coop-invite-link" readonly />
 <div class="coop-invite-actions"><button id="coop-share" class="primary start-button" type="button"><span class="cta-surface"><span class="cta-icon" aria-hidden="true"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M11 1A7 7 0 1 0 15 12a6 6 0 0 1-4-11zm2 0h1v2h2v1h-2v2h-1V4h-2V3h2V1z"/></svg></span><span class="cta-label">Share invitation</span><span class="cta-cap" aria-hidden="true"></span></span></button><button id="coop-copy" class="coop-secondary" type="button">Copy invitation link</button></div>
 <p id="coop-share-status" role="status" aria-live="polite">Start when everyone is ready. Keep this page open.</p>
