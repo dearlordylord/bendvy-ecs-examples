@@ -178,7 +178,7 @@ The replay comparison tools consume recorded observations separately.
 
 ### Browser stream bot
 
-Open the normal browser game with `?stream=1`, or choose **Stream** in the menu.
+Open the normal browser game with `?stream=1`.
 Select the usual character, stage, arcana and mode, then click **Start Run**.
 This opens a separate **Bot controls** window and starts the game. Allow the
 popup when prompted. The game view contains no operator panel. Press **F2**
