@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "issue": "https://github.com/dearlordylord/bendvy-ecs-examples/issues/23",
-  "status": "incomplete qualification",
+  "status": "complete local qualification",
   "baseline": {
     "revision": "d937e1a04968e067f0c3b4a2da9b9c34212c0acb",
     "dirty": true,
@@ -9,30 +9,42 @@
   },
   "candidateBuild": {
     "schemaVersion": 1,
-    "revision": "d937e1a04968e067f0c3b4a2da9b9c34212c0acb",
+    "revision": "24513c754f2248080d61c2db949add33b0ffaa31",
     "dirty": true,
     "buildContext": "local-development",
-    "builtAt": "2026-10-28T18:32:30.153Z"
+    "builtAt": "2026-10-28T21:46:55.255Z"
   },
   "checks": {
     "typescriptLintFormatBoundaries": "passed",
     "nodeTests": {
-      "passed": 55,
-      "total": 55
+      "passed": 63,
+      "total": 63,
+      "unitTests": 32,
+      "transportExecutorTests": 29,
+      "guestDrainAdapterTests": 2
     },
-    "transportPolicyChecks": 133,
-    "transportExecutorTests": 26,
-    "transportKernelLaws": 30,
-    "semanticMutantsRejected": 9,
+    "transportPolicyChecks": 157,
+    "transportExecutorTests": 29,
+    "transportKernelLaws": 36,
+    "semanticMutantsRejected": 12,
     "rustTests": {
       "passed": 2,
       "total": 2
     },
     "repositoryProofs": {
-      "passed": 65,
+      "passed": 66,
       "total": 66,
-      "failed": "examples/survivors/offline-policy/preference-PROOF.bend",
-      "failure": "Exit 137 under the existing 60-second CPU/wall bounds, including standalone retry; file unchanged from starting revision"
+      "checkedRevision": "67472b5",
+      "preferenceProof": {
+        "cpuLimitSeconds": 10,
+        "wallLimitSeconds": 10,
+        "repeatedPasses": 5,
+        "observedWallSeconds": [
+          3.16,
+          3.87
+        ],
+        "scope": "Observed minimum and maximum across five runs; not a throughput comparison"
+      }
     },
     "actualIroh": {
       "lobbyFourPlayersExplicitStartCapacityReconnect": "passed",
@@ -44,15 +56,452 @@
       "firstSeatDepartureWithOtherReceiptMissing": "passed",
       "nativeOversizedAndStalledReceive": "passed",
       "nativeCloseDuringIncompleteRead": "passed",
-      "nativeOfferSaturationExpiryFreshClientRecovery": "passed"
+      "nativeOfferSaturationExpiryFreshClientRecovery": "passed",
+      "occupiedReservedSeatCannotReplaceIncumbent": "passed",
+      "reservedCharacterProgressAndResumedAuthoritativeInput": "passed",
+      "sameEndpointImmediateRetryAfterNativeTimeout": "passed: two 20-second timeouts, delayed expired offers, same endpoint pair and invitation, exact bytes"
     },
-    "nativeSolo": "Fresh Linux build and gameplay observed with Node absent from PATH; separate WM_DELETE_WINDOW launch exited zero"
+    "nativeSolo": "Fresh b1c28fb Linux ARM64 build and gameplay/profile settlement with Node absent from PATH; WM_DELETE_WINDOW exited zero. Later changes do not enter the native game import graph.",
+    "guestDrainAdapterTests": 2,
+    "reliability": {
+      "status": "passed: all three current-build scenarios",
+      "checkerRevision": "f97f89e",
+      "productionRevision": "24513c7",
+      "windowMilliseconds": 32000,
+      "observationDelayMilliseconds": 300,
+      "sendCompletionDelaysMilliseconds": [
+        0,
+        200,
+        600
+      ],
+      "scope": "Original controls and thresholds; common bounded measurement interval. The 600 ms case qualifies bounded overload only.",
+      "previousBoundedCohort": "/tmp/issue23-final-plain-reliability/summary.json",
+      "previousCandidate200Milliseconds": "failed: p95 32 ticks, worst five-second window 35 ticks",
+      "finalCohort": "/tmp/issue23-guest-drain-final-reliability/summary.json",
+      "matrixOrder": [
+        {
+          "artifact": "baseline",
+          "sendCompletionDelayMilliseconds": 0
+        },
+        {
+          "artifact": "candidate",
+          "sendCompletionDelayMilliseconds": 0
+        },
+        {
+          "artifact": "candidate",
+          "sendCompletionDelayMilliseconds": 200
+        },
+        {
+          "artifact": "baseline",
+          "sendCompletionDelayMilliseconds": 200
+        },
+        {
+          "artifact": "baseline",
+          "sendCompletionDelayMilliseconds": 600
+        },
+        {
+          "artifact": "candidate",
+          "sendCompletionDelayMilliseconds": 600
+        }
+      ],
+      "checkerSha256": "581a4fc600df085cfbbcad95e4cb1e6bb3a4c9a657dd3297a41535dc891f3aa2",
+      "results": [
+        {
+          "artifact": "baseline",
+          "sendCompletionDelayMilliseconds": 0,
+          "passed": true,
+          "scope": "active gameplay",
+          "p95LagTicks": 27,
+          "maxLagTicks": 30,
+          "windowP95LagTicks": [
+            26,
+            26,
+            29,
+            27
+          ],
+          "motionViolations": 0,
+          "appliedInputRatio": 0.9366980325064157,
+          "activeMilliseconds": 23484,
+          "measuredMilliseconds": 18482,
+          "authoritativeTicksPerSecond": 59.958,
+          "commonWindowVerified": true,
+          "resourceBoundsVerified": true,
+          "resources": {
+            "host": {
+              "maxPendingSends": 0,
+              "maxPendingBytes": 0,
+              "nativeCallMs": {
+                "count": 434,
+                "median": 0,
+                "p95": 1,
+                "max": 5
+              },
+              "nativeEndToNextStartMs": {
+                "count": 433,
+                "median": 51,
+                "p95": 68,
+                "max": 163
+              },
+              "maxNativeMessageBytes": 2933
+            },
+            "guest": {
+              "maxPendingSends": 0,
+              "maxPendingBytes": 0,
+              "nativeCallMs": {
+                "count": 454,
+                "median": 0,
+                "p95": 1,
+                "max": 2
+              },
+              "nativeEndToNextStartMs": {
+                "count": 453,
+                "median": 50,
+                "p95": 64,
+                "max": 397
+              },
+              "maxNativeMessageBytes": 164
+            }
+          },
+          "startedAt": "2026-10-28T22:02:39.897532+00:00",
+          "endedAt": "2026-10-28T22:03:21.232979+00:00"
+        },
+        {
+          "artifact": "candidate",
+          "sendCompletionDelayMilliseconds": 0,
+          "passed": true,
+          "scope": "active gameplay",
+          "p95LagTicks": 28,
+          "maxLagTicks": 29,
+          "windowP95LagTicks": [
+            29,
+            27,
+            29,
+            26
+          ],
+          "motionViolations": 0,
+          "appliedInputRatio": 0.9396551724137931,
+          "activeMilliseconds": 24412,
+          "measuredMilliseconds": 19411,
+          "authoritativeTicksPerSecond": 59.967,
+          "commonWindowVerified": true,
+          "resourceBoundsVerified": true,
+          "resources": {
+            "host": {
+              "maxPendingSends": 0,
+              "maxPendingBytes": 0,
+              "nativeCallMs": {
+                "count": 452,
+                "median": 0,
+                "p95": 1,
+                "max": 3
+              },
+              "nativeEndToNextStartMs": {
+                "count": 451,
+                "median": 52,
+                "p95": 71,
+                "max": 127
+              },
+              "maxNativeMessageBytes": 2935
+            },
+            "guest": {
+              "maxPendingSends": 0,
+              "maxPendingBytes": 0,
+              "nativeCallMs": {
+                "count": 819,
+                "median": 0,
+                "p95": 1,
+                "max": 5
+              },
+              "nativeEndToNextStartMs": {
+                "count": 818,
+                "median": 30,
+                "p95": 56,
+                "max": 108
+              },
+              "maxNativeMessageBytes": 156
+            }
+          },
+          "startedAt": "2026-10-28T22:03:21.320069+00:00",
+          "endedAt": "2026-10-28T22:04:03.061831+00:00"
+        },
+        {
+          "artifact": "candidate",
+          "sendCompletionDelayMilliseconds": 200,
+          "passed": true,
+          "scope": "active gameplay",
+          "p95LagTicks": 27,
+          "maxLagTicks": 29,
+          "windowP95LagTicks": [
+            28,
+            26,
+            27,
+            27
+          ],
+          "motionViolations": 0,
+          "appliedInputRatio": 0.8504446240905417,
+          "activeMilliseconds": 24350,
+          "measuredMilliseconds": 19350,
+          "authoritativeTicksPerSecond": 59.965,
+          "commonWindowVerified": true,
+          "resourceBoundsVerified": true,
+          "resources": {
+            "host": {
+              "maxPendingSends": 0,
+              "maxPendingBytes": 0,
+              "nativeCallMs": {
+                "count": 446,
+                "median": 0,
+                "p95": 1,
+                "max": 12
+              },
+              "nativeEndToNextStartMs": {
+                "count": 445,
+                "median": 52,
+                "p95": 74,
+                "max": 145
+              },
+              "maxNativeMessageBytes": 2983
+            },
+            "guest": {
+              "maxPendingSends": 1,
+              "maxPendingBytes": 514,
+              "nativeCallMs": {
+                "count": 118,
+                "median": 0,
+                "p95": 1,
+                "max": 1
+              },
+              "nativeEndToNextStartMs": {
+                "count": 117,
+                "median": 204,
+                "p95": 222,
+                "max": 449
+              },
+              "maxNativeMessageBytes": 514
+            }
+          },
+          "startedAt": "2026-10-28T22:04:03.143794+00:00",
+          "endedAt": "2026-10-28T22:04:46.583874+00:00"
+        },
+        {
+          "artifact": "baseline",
+          "sendCompletionDelayMilliseconds": 200,
+          "passed": false,
+          "scope": "active gameplay",
+          "p95LagTicks": 114,
+          "maxLagTicks": 131,
+          "windowP95LagTicks": [
+            31,
+            28,
+            92,
+            131
+          ],
+          "motionViolations": 2,
+          "appliedInputRatio": 0.6995433789954338,
+          "activeMilliseconds": 24349,
+          "measuredMilliseconds": 19350,
+          "authoritativeTicksPerSecond": 59.2,
+          "commonWindowVerified": true,
+          "resourceBoundsVerified": true,
+          "resources": {
+            "host": {
+              "maxPendingSends": 0,
+              "maxPendingBytes": 0,
+              "nativeCallMs": {
+                "count": 356,
+                "median": 0,
+                "p95": 1,
+                "max": 6
+              },
+              "nativeEndToNextStartMs": {
+                "count": 355,
+                "median": 51,
+                "p95": 90,
+                "max": 2293
+              },
+              "maxNativeMessageBytes": 2976
+            },
+            "guest": {
+              "maxPendingSends": 1,
+              "maxPendingBytes": 938,
+              "nativeCallMs": {
+                "count": 82,
+                "median": 0,
+                "p95": 1,
+                "max": 3
+              },
+              "nativeEndToNextStartMs": {
+                "count": 81,
+                "median": 250,
+                "p95": 438,
+                "max": 2287
+              },
+              "maxNativeMessageBytes": 938
+            }
+          },
+          "startedAt": "2026-10-28T22:04:46.636892+00:00",
+          "endedAt": "2026-10-28T22:05:31.331581+00:00"
+        },
+        {
+          "artifact": "baseline",
+          "sendCompletionDelayMilliseconds": 600,
+          "passed": true,
+          "scope": "bounded overload only",
+          "p95LagTicks": 41,
+          "maxLagTicks": 47,
+          "windowP95LagTicks": [
+            41,
+            39,
+            44,
+            40
+          ],
+          "motionViolations": 0,
+          "appliedInputRatio": 0,
+          "activeMilliseconds": 22018,
+          "measuredMilliseconds": 17005,
+          "authoritativeTicksPerSecond": 60.128,
+          "commonWindowVerified": true,
+          "resourceBoundsVerified": true,
+          "resources": {
+            "host": {
+              "maxPendingSends": 0,
+              "maxPendingBytes": 0,
+              "nativeCallMs": {
+                "count": 254,
+                "median": 0,
+                "p95": 1,
+                "max": 4
+              },
+              "nativeEndToNextStartMs": {
+                "count": 253,
+                "median": 51,
+                "p95": 343,
+                "max": 556
+              },
+              "maxNativeMessageBytes": 2807
+            },
+            "guest": {
+              "maxPendingSends": 1,
+              "maxPendingBytes": 1074,
+              "nativeCallMs": {
+                "count": 35,
+                "median": 0,
+                "p95": 2,
+                "max": 3
+              },
+              "nativeEndToNextStartMs": {
+                "count": 34,
+                "median": 648,
+                "p95": 677,
+                "max": 707
+              },
+              "maxNativeMessageBytes": 1074
+            }
+          },
+          "startedAt": "2026-10-28T22:05:31.405678+00:00",
+          "endedAt": "2026-10-28T22:06:15.701493+00:00"
+        },
+        {
+          "artifact": "candidate",
+          "sendCompletionDelayMilliseconds": 600,
+          "passed": true,
+          "scope": "bounded overload only",
+          "p95LagTicks": 44,
+          "maxLagTicks": 48,
+          "windowP95LagTicks": [
+            45,
+            42,
+            45,
+            44,
+            44
+          ],
+          "motionViolations": 0,
+          "appliedInputRatio": 0,
+          "activeMilliseconds": 26664,
+          "measuredMilliseconds": 21664,
+          "authoritativeTicksPerSecond": 59.552,
+          "commonWindowVerified": true,
+          "resourceBoundsVerified": true,
+          "resources": {
+            "host": {
+              "maxPendingSends": 0,
+              "maxPendingBytes": 0,
+              "nativeCallMs": {
+                "count": 311,
+                "median": 0,
+                "p95": 1,
+                "max": 5
+              },
+              "nativeEndToNextStartMs": {
+                "count": 310,
+                "median": 52,
+                "p95": 358,
+                "max": 490
+              },
+              "maxNativeMessageBytes": 2965
+            },
+            "guest": {
+              "maxPendingSends": 1,
+              "maxPendingBytes": 1140,
+              "nativeCallMs": {
+                "count": 45,
+                "median": 0,
+                "p95": 1,
+                "max": 1
+              },
+              "nativeEndToNextStartMs": {
+                "count": 44,
+                "median": 604,
+                "p95": 616,
+                "max": 628
+              },
+              "maxNativeMessageBytes": 1140
+            }
+          },
+          "startedAt": "2026-10-28T22:06:15.775499+00:00",
+          "endedAt": "2026-10-28T22:07:00.346761+00:00"
+        }
+      ],
+      "interpretation": "All current-build cases pass unchanged criteria. Historical baseline fails the 200 ms case (lag and motion), and that failure is retained. This finite comparison does not establish a universal latency improvement. Both current interactive cases advance at approximately 60 authoritative ticks per second. The 600 ms cases do not satisfy interactive input or lag criteria and are qualified only for bounded overload.",
+      "thresholds": {
+        "durationMs": 32000,
+        "warmupMs": 5000,
+        "observationDelayMs": 300,
+        "playableSendDelaysMs": [
+          0,
+          200
+        ],
+        "maxLagTicks": 60,
+        "p95LagTicks": 30,
+        "windowP95LagTicks": 30,
+        "minActivePhaseZeroMs": 15000,
+        "minPostWarmupMeasuredMs": 10000,
+        "minInputAppliedRatio": 0.5,
+        "maxPendingSends": 16,
+        "maxPendingBytes": 4194304,
+        "overloadDelayMs": 600,
+        "overloadScope": "bounded resources only; no playability claim",
+        "maxNativeMessageBytes": 1048576,
+        "minLagSamples": 100,
+        "minMotionPairs": 100
+      },
+      "artifactHashStability": {
+        "baseline": true,
+        "candidate": true
+      }
+    },
+    "guestDrainAdapterRegressionRerun": {
+      "passed": 2,
+      "total": 2,
+      "command": "node --test examples/survivors/coop-client-drain-check.mts",
+      "scope": "Exact committed fixture after the type-safe VM boundary cleanup; direct console result, 2026-10-28T22:07Z"
+    },
+    "artifactHashVerification": {
+      "files": 84,
+      "unchangedAfterFinalCohort": true
+    }
   },
-  "openQualification": [
-    "Original historical reliability baseline reaches terminal phase before the active reconnect check and fails some unchanged lag/motion criteria; runs had concurrent heavy workload. No clean comparative qualification or performance claim.",
-    "The unchanged preference proof fails its bounded gate.",
-    "A same-client retry after native handshake timeout failed during replacement handshake; original attempts had all rejected, replacement outcome collection did not complete, cause unknown. Fresh-client offer-store reclamation is independently verified."
-  ],
+  "openQualification": [],
   "artifactHashes": {
     "LICENSE-APACHE": "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9",
     "LICENSE-MIT": "ea8083bd24940fb1a0a360bf2591f118e936c696cc926efdeaae76664b9ce0ec",
@@ -62,7 +511,7 @@
     "cbor.mjs": "89ca0711a705aa807c82eaa4dd038e073a5659c2e9fa3d723316bf400e2a9d39",
     "content.mjs": "2266c4eac05e6a969b9135fc0bef4d7dc19ef3bed801b6b42b165397f0ebd38b",
     "coop-boundary.mjs": "81f2b380bac2af87b67bece7b1799180153dd544ad97448fe337405103ccf0d0",
-    "coop-browser.mjs": "34ebbad4cb950a82efe078d10bfd049e195e7253753ff30f96abce515c40fe0a",
+    "coop-browser.mjs": "6f640edc4f6d0494eaa82a677f5eefdb13aeaec3efa9fa1cfe2411dcef618e5b",
     "coop-control-frame.mjs": "3212ebe386edd0404b647afb042292e40d577240fd7829e6a33af1c192cd41eb",
     "coop-host.mjs": "9c4a35d2511ed2a0e769122f874b56c5cb4f6a3908d5dcfb3818cd434e958867",
     "coop-party-wire.mjs": "000eb7e5364456b2f6538188ef333a2effa32946719ef8f117ec6d63d2a8e95f",
@@ -78,26 +527,26 @@
     "dist/coop-client-delivery.mjs": "bfb3566a831d35ca0b71a313471078c3418a3eca36236332030cc16e4b4cafd8",
     "dist/coop-connection.mjs": "ecc4310da142e98c317ac8065feb3acd734b826968503ba9814ef3e6b705ca42",
     "dist/coop-contact-playback.mjs": "af66d0cf1b59b64f9675a0651ad991df1cd68d2a1737bbf0e29dc342b586dbd6",
-    "dist/coop-core.mjs": "524e87079462a058dc849d3e06a4b721ae17bb942b29557ffd2466a81830a66d",
+    "dist/coop-core.mjs": "51f97e2c4b55e4a66b94e1a1d765eb69e30e13b77f49ac8cddb67e2dae896607",
     "dist/coop-finish.mjs": "1796c1b6bf222c33e624cdba9653f936d504f24f19da7b8db611604e288216bd",
     "dist/coop-hit-effects.mjs": "65bcd9c1132200b90ff787b88e776a4bacbad8240add69f1d75742c73c2950f0",
     "dist/coop-hit-journal.mjs": "b61dc8a2f3699118383300b8fcbf5d9bdebd81769c09095e0ae386b115b4bcb6",
     "dist/coop-input-flow.mjs": "3bcd84dc632996960e17225daa7ae3f44426be7ecd20363bc38e4647392a0757",
     "dist/coop-input-queue.mjs": "6f87a78c28b72376f489da0b48538a64b69ffde182d5865d1e7930c1fdaa8592",
     "dist/coop-lobby.mjs": "833a892988e65324df555cb1f57a0eb50f093bfa8645018272ee815c69dfc5f5",
-    "dist/coop-local-projectiles.mjs": "5a3ae10ff0dff4ef8a6ef68a7fefcb245a92f7befbb14b75b93f7276710c6923",
-    "dist/coop-network.mjs": "cb7f2e1338060aa0437e58779371cb1c9ac39a379fdc13987f2153a1af5654d4",
-    "dist/coop-playback-wire.mjs": "75e2d7dd992f4ba3b38796b57bd9f76453c779d5b6d7de4200e9f3381b00e666",
+    "dist/coop-local-projectiles.mjs": "f866bd97463a1e61ff22f072ae284c67a88e78c958372d0c7b795d07104316e5",
+    "dist/coop-network.mjs": "f266e90a75bb72273e26faae3069b612f9c9ba52fd3a5ccf01412a6c99df23c5",
+    "dist/coop-playback-wire.mjs": "da982cca387ee17657229874d0e3def56d7866e7f8770423602413713dc02d0f",
     "dist/coop-playback.mjs": "c75845997ef5c8d719a7e6de01b4ce1613435dd691520abe978463d30781f6ea",
     "dist/coop-prediction.mjs": "e4e9e171b3ce87a75e03dff9e5cef371a9fc9b0bfa32e9afa3c3793937dddf69",
     "dist/coop-protocol.mjs": "73fec73fceadb44ef55a6b698fb376579b7802d23032479936e21eb392cd21cb",
     "dist/coop-session.mjs": "38147f1471c3901caa3dc6c9f8426b5a54a3e36b48fd251a326937b0e9477c86",
     "dist/coop-snapshot-flow.mjs": "198e38082c787f17cc83b22469023c0b46bdbe692fa6eb64c844d41861a7a79b",
     "dist/coop-snapshot-receipts.mjs": "98ee32f3ab904a434c2f6df9a881a19932ba1e711094479d9d733cc0b260dd8f",
-    "dist/coop-transport-policy.mjs": "71db9f508ea9cf026b6a957f29dca159ca1c4393472b8df10353c5772bf58299",
-    "dist/game.mjs": "0de9e7e1f6bad41befb9e7f6a3620fc4d52e28593bbd5a4ebdfebc68dd54b114",
+    "dist/coop-transport-policy.mjs": "f850c028b0e23819b39c426e4b2c584793795f52d3f7abb6c104b7eebf2d4511",
+    "dist/game.mjs": "9667f08c4ea57f90a908ed763e06a7e6a253d8f5a45554941d5a8bc443d03ab5",
     "dist/menu-progression.mjs": "abe99f9a1d5d49a08da9b2d52befc237a15fe1c5c4738948fc628282d3bbc4c4",
-    "dist/stream-bot.mjs": "de6a7bf68870e33ba75b7d1ec1f1530bbe87b5ebd801918139a27b53609412ee",
+    "dist/stream-bot.mjs": "e5167da539b5a376b2bb1be939a0a7bab3a1956c3feb8c978efcbadac691191c",
     "dist/stream-session.mjs": "28889737a472a8d9927d0c8c1570deb0b304240bebbc34abdf9a3ef377ff5f98",
     "dom.mjs": "cadc716785be2bcd9b797772b40a4eec4215fd906ba8d765bea0d88a80d0aa54",
     "entry-scripts.mjs": "52c5cf68b16d59491339c1ec05255cc6e231548dbd69ca85a8b7ce55bfcf4a44",
@@ -113,7 +562,7 @@
     "menu-a.css": "d4cd849ea79fa2b9e278612115d1c3c021839ee91288f9898b06abddcbc47c91",
     "menu-content.mjs": "b58cf37ad92f0b5d5442fe84fb221eb749b844de7c8b14c11fd26888f908533b",
     "menu-moon.css": "ac055bcdd2047c704aabbf3d4a8f8206262dfbf52378431da46f1e9e6ab17ac3",
-    "network-schema.generated.mjs": "72924d11e56682ed00c264a6b3251ddb1ef5f3bccc484c96c1dccc438a04636f",
+    "network-schema.generated.mjs": "7e871f6138db1be86710ddb7db130816788c5331aacca9a43fa2d15e6203c4a5",
     "network-schema.mjs": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881",
     "observations.mjs": "169d038f8a82aaf8f72a38be10d6d58adcab2835bc3c6fc13e878eea86c499fc",
     "profile.mjs": "e791034c08109f2033c48555b7e699f4c533639ede2e7ac0e8805d9c596f6722",
@@ -137,6 +586,39 @@
     "style.css": "939f4ab91c599120c769101bd5484f35d061c509426558ef0be029c71e7cd1a0",
     "survivor-art.mjs": "b7d66fa912c5110861470d12888579dbfa9fa0ba9b4a65dbbff5ee14b92d57f5",
     "survivor-shapes.mjs": "203a92bc8c79d4c6f7eb8909599dbb69afa11adc644399a237b02ff421cf419e",
-    "version.json": "b70350e95daf729ecc4273e095cfc1c5b9f2f92001a595dc1cb845018a643d6a"
+    "version.json": "a4d22c1f8a1b878a963e183869d08782bd7a1915740cb896e134026a610daf36"
+  },
+  "evidence": {
+    "freshBuild": "/tmp/issue23-guest-drain-build.log",
+    "typescript": "/tmp/issue23-client-drain-typescript.log",
+    "unitTests": "/tmp/issue23-client-drain-node-tests.log",
+    "transport": "/tmp/issue23-client-drain-transport.log",
+    "proofs": "/tmp/issue23-final-repair-proofs.log",
+    "rust": "/tmp/issue23-final-repair-rust-probe-tests.log",
+    "lobby": "/tmp/issue23-guest-drain-browser.log",
+    "nativeBounds": "/tmp/issue23-final-repair-native-io.log",
+    "watchdogsAndSameEndpointRetry": "/tmp/issue23-final-repair-watchdog.log",
+    "cleanup": "/tmp/issue23-guest-drain-cleanup.log",
+    "terminal": "/tmp/issue23-guest-drain-terminal.log",
+    "stalledReceipt": "/tmp/issue23-guest-drain-stalled-receipt.log",
+    "departureDrain": "/tmp/issue23-guest-drain-departure-drain.log",
+    "nativeGame": "/tmp/issue23-observation-native-launch.log",
+    "matchedReliability": "/tmp/issue23-reliability-quiet-matrix.json",
+    "laterReliabilityFailure": "/tmp/issue23-reliability-wrapper-candidate/measured-0.json",
+    "boundedReliabilityBeforeDrain": "/tmp/issue23-final-plain-reliability/summary.json",
+    "guestDrainPilot": "/tmp/issue23-eventdrain-pilot/summary.json",
+    "guestDrainRegressionBefore": "/tmp/issue23-client-drain-red.log",
+    "guestDrainRegressionAfter": "/tmp/issue23-client-drain-green.log",
+    "measurementWindowRegressionBefore": "/tmp/issue23-measurement-window-red.log",
+    "measurementWindowRegressionAfter": "/tmp/issue23-measurement-window-green.log",
+    "finalReliability": "/tmp/issue23-guest-drain-final-reliability/summary.json"
+  },
+  "unchangedArtifactComponents": {
+    "comparedBuild": "0c5f51f",
+    "changedFiles": [
+      "coop-browser.mjs",
+      "version.json"
+    ],
+    "scope": "All other artifact files match the previously qualified build byte for byte. Native transport safety and timeout-retry evidence therefore covers the unchanged native module and transport policy; Bend proof and native solo source dependencies are unchanged."
   }
 }
