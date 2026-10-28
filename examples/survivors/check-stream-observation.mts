@@ -19,11 +19,11 @@ const view: BendABI.StreamBot.View = {
 }
 const enemy = rows(state.snapshots).find((row) => row.$ === "EnemySnapshot")
 assert.ok(enemy && enemy.$ === "EnemySnapshot")
-const nearEnemy: BendABI.Game.Snapshot = {
+const nearEnemy: BendABI.GameObservation.Snapshot = {
   ...enemy,
   enemy: { ...enemy.enemy, spatial: { ...enemy.enemy.spatial, x: view.px + 300, y: view.py } }
 }
-const pickup: BendABI.Game.Snapshot = {
+const pickup: BendABI.GameObservation.Snapshot = {
   $: "PickupSnapshot",
   pickup: {
     $: "State",
@@ -34,7 +34,7 @@ const pickup: BendABI.Game.Snapshot = {
 }
 const shot = rows(state.snapshots).find((row) => row.$ === "ProjectileSnapshot")
 assert.ok(shot && shot.$ === "ProjectileSnapshot")
-const hostile: BendABI.Game.Snapshot = {
+const hostile: BendABI.GameObservation.Snapshot = {
   ...shot,
   projectile: {
     ...shot.projectile,
@@ -44,7 +44,7 @@ const hostile: BendABI.Game.Snapshot = {
     trajectory: { ...shot.projectile.trajectory, vx: 1, life: 300 }
   }
 }
-const inactive: BendABI.Game.Snapshot = {
+const inactive: BendABI.GameObservation.Snapshot = {
   ...nearEnemy,
   enemy: { ...nearEnemy.enemy, vitals: { ...nearEnemy.enemy.vitals, health: 0 } }
 }
@@ -99,7 +99,7 @@ for (const item of [
   { $: "Chest" },
   { $: "Relic", stage: 0 }
 ] satisfies BendABI.PickupState.Item[]) {
-  const physical: Extract<BendABI.Game.Snapshot, { $: "PickupSnapshot" }> = {
+  const physical: Extract<BendABI.GameObservation.Snapshot, { $: "PickupSnapshot" }> = {
     ...pickup,
     pickup: { ...pickup.pickup, payload: { ...pickup.pickup.payload, item } }
   }
@@ -109,7 +109,7 @@ for (const item of [
   )
   assert.ok(available, `${item.$}: discovered actor must be selectable`)
   const selected = Bot.choose(discovery.memory, available.index)
-  const atItem: BendABI.Game.Run = {
+  const atItem: BendABI.GameObservation.Run = {
     ...run,
     player: { ...run.player, px: physical.pickup.spatial.x, py: physical.pickup.spatial.y }
   }

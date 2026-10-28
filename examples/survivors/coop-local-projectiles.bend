@@ -1,3 +1,4 @@
+import ./game-observation.bend as Model
 import run-state.bend as RS
 import Base
 import game-components.bend as Components
@@ -86,9 +87,9 @@ def origin_x(value:Visual) -> F32:
 def origin_y(value:Visual) -> F32:
   match value:
     case Visual{_,_,_,_,_,_,_,y,_,_,_,_,_,_,_,_,_,_,_,_,_,_}: y
-def run_point(run:G.Run) -> Point:
+def run_point(run:Model.Run) -> Point:
   match run:
-    case G.Run{RS.Session{_,_,_,_,_,_,_,_,_,_,_,_,_},RS.PlayerState{x,y,_,_,_,_,_,_,_,_,_,_,_,_,_,_}}: Point{x,y}
+    case Model.Run{RS.Session{_,_,_,_,_,_,_,_,_,_,_,_,_},RS.PlayerState{x,y,_,_,_,_,_,_,_,_,_,_,_,_,_,_}}: Point{x,y}
 def shot_id(value:Visual) -> String:
   match value:
     case Visual{id,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_}: id
@@ -322,11 +323,11 @@ def reposition_attached_rows(rows:List<&2,Visual>,+x:F32,+y:F32) -> List<&2,Visu
   match rows:
     case []: []
     case head <> tail: reposition_attached(head,x,y) <> reposition_attached_rows(tail,x,y)
-def released_run(+value:Visual,+run:G.Run) -> G.Run:
+def released_run(+value:Visual,+run:Model.Run) -> Model.Run:
   match value run:
-    case Visual{_,_,_,_,_,_,+originX,+originY,_,_,_,_,_,_,_,_,_,_,_,_,_,_} G.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{_,_,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}:
-      G.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{originX,originY,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}
-def owner_run(attached:Bool,+value:Visual,run:G.Run) -> G.Run:
+    case Visual{_,_,_,_,_,_,+originX,+originY,_,_,_,_,_,_,_,_,_,_,_,_,_,_} Model.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{_,_,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}:
+      Model.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{originX,originY,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}
+def owner_run(attached:Bool,+value:Visual,run:Model.Run) -> Model.Run:
   match attached value:
     case True{} _: run
     case False{} _: released_run(value,run)
@@ -342,7 +343,7 @@ def aim_for_shot(needsNearest:Bool,+args:G.Args,+value:Visual) -> G.Aim:
   match needsNearest:
     case True{}: G.nearest_from_args(args,shot_x(visual_shot(value)),shot_y(visual_shot(value)))
     case False{}: G.Aim{(shot_x(visual_shot(value)) + 180.0 : F32),shot_y(visual_shot(value)),0,10000000.0}
-def step_point(+value:Visual,run:G.Run,+geometry:Geometry) -> Projectile.Shot:
+def step_point(+value:Visual,run:Model.Run,+geometry:Geometry) -> Projectile.Shot:
   match geometry:
     case Geometry{_,bodies,_,_,_}:
       +args:G.Args = G.Args{run,bodies,0.0,0.0,[],[]}
@@ -408,7 +409,7 @@ def contact_rows(active:Bool,+geometry:Geometry,+start:Projectile.Shot,+finish:P
     case False{} _: []
     case True{} Geometry{_,_,targets,index,_}:
       Contact.contacts(Broadphase.query(index,shot_x(start),shot_y(start),shot_x(finish),shot_y(finish),shot_radius(start),[]),shot_x(start),shot_y(start),shot_x(finish),shot_y(finish),shot_radius(start),[])
-def flight_step(+value:Visual,run:G.Run,+geometry:Geometry) -> Visual:
+def flight_step(+value:Visual,run:Model.Run,+geometry:Geometry) -> Visual:
   +next = step_point(value,owner_run(attached_weapon(visual_weapon(value)),value,run),geometry)
   +contacts = contact_rows(active_contact(value),geometry,visual_shot(value),next)
   predicted_state(first_contact(contacts),value,next,geometry_targets(geometry))
@@ -421,11 +422,11 @@ def visual_fading(done:Bool,value:Visual) -> Visual:
     case True{} _: fading(0,value)
     case False{} Visual{id,owner,slot,weapon,born,age,x,y,shot,pending,seed,generation,px,py,pendingAge,confirmed,late,event,guideTick,guideX,guideY,fade}:
       Visual{id,owner,slot,weapon,born,age,x,y,shot,pending,seed,generation,px,py,pendingAge,confirmed,late,event,guideTick,guideX,guideY,(fade - 1 : U32)}
-def flight_or_fade(hasFade:Bool,fade:U32,value:Visual,run:G.Run,+geometry:Geometry) -> Visual:
+def flight_or_fade(hasFade:Bool,fade:U32,value:Visual,run:Model.Run,+geometry:Geometry) -> Visual:
   match hasFade:
     case True{}: visual_fading(U32.is_le(fade,1),value)
     case False{}: flight_step(value,run,geometry)
-def advance_flight_or_fade(+fade:U32,+value:Visual,+run:G.Run,+geometry:Geometry) -> Visual:
+def advance_flight_or_fade(+fade:U32,+value:Visual,+run:Model.Run,+geometry:Geometry) -> Visual:
   flight_or_fade(U32.is_gt(fade,0),fade,value,run,geometry)
 def pending_step(+age:U32,value:Visual) -> Visual:
   match value:
@@ -454,22 +455,22 @@ def update_guided(value:Visual,next:Projectile.Shot,tick:U32,+event:Journal.HitE
     case Visual{id,owner,slot,weapon,born,age,x,y,_,pending,seed,generation,px,py,pendingAge,confirmed,_,_,guideTick,guideX,guideY,fade}:
       +done = U32.is_ge(tick,event_tick(event))
       Visual{id,owner,slot,weapon,born,(age + 1 : U32),x,y,final_shot(done,next),pending,seed,generation,px,py,pendingAge,confirmed,done,Some{event},guideTick,guideX,guideY,Bool.pick(U32,done,fade_ticks(),fade)}
-def guided_step_found(found:Maybe<&2,Journal.HitEvent>,+value:Visual,+run:G.Run,+tick:U32,+geometry:Geometry) -> Visual:
+def guided_step_found(found:Maybe<&2,Journal.HitEvent>,+value:Visual,+run:Model.Run,+tick:U32,+geometry:Geometry) -> Visual:
   match found:
     case None{}: flight_step(value,run,geometry)
     case Some{+event}:
       +point = guided_point(event,visual_guide_tick(value),visual_guide_x(value),visual_guide_y(value),tick,geometry_policy_targets(geometry))
       +next = step_point(value,owner_run(attached_weapon(visual_weapon(value)),value,run),geometry)
       update_guided(value,with_position(next,point),tick,event)
-def guided_step(+value:Visual,+run:G.Run,tick:U32,+geometry:Geometry) -> Visual:
+def guided_step(+value:Visual,+run:Model.Run,tick:U32,+geometry:Geometry) -> Visual:
   guided_step_found(visual_event(value),value,run,tick,geometry)
-def advance_selected(pending:Bool,confirmed:Bool,late:Bool,pendingAge:U32,fade:U32,+value:Visual,+run:G.Run,tick:U32,+geometry:Geometry) -> Visual:
+def advance_selected(pending:Bool,confirmed:Bool,late:Bool,pendingAge:U32,fade:U32,+value:Visual,+run:Model.Run,tick:U32,+geometry:Geometry) -> Visual:
   match pending confirmed late:
     case True{} _ _: pending_step(pendingAge,value)
     case _ True{} False{}: guided_step(value,run,tick,geometry)
     case _ True{} True{}: visual_fading(U32.is_le(fade,1),value)
     case _ _ _: advance_flight_or_fade(fade,value,run,geometry)
-def advance_visual(+value:Visual,run:G.Run,tick:U32,+geometry:Geometry) -> Visual:
+def advance_visual(+value:Visual,run:Model.Run,tick:U32,+geometry:Geometry) -> Visual:
   match value:
     case Visual{_,_,_,_,_,_,_,_,_,pending,_,_,_,_,pendingAge,confirmed,late,_,_,_,_,fade}:
       advance_selected(pending,confirmed,late,pendingAge,fade,value,run,tick,geometry)
@@ -481,7 +482,7 @@ def keep_advanced(keep:Bool,value:Visual,tail:List<&2,Visual>) -> List<&2,Visual
   match keep:
     case True{}: value <> tail
     case False{}: tail
-def advance_visuals(rows:List<&2,Visual>,+run:G.Run,+tick:U32,+geometry:Geometry) -> List<&2,Visual>:
+def advance_visuals(rows:List<&2,Visual>,+run:Model.Run,+tick:U32,+geometry:Geometry) -> List<&2,Visual>:
   match rows:
     case []: []
     case head <> tail:
@@ -498,30 +499,30 @@ def row_weapon(row:G.EntityRow) -> U32:
     case G.ProjectileRow{Shot.Outcome{Shot.State{_,_,_,Components.ShotPayload{weapon,_,_},_},_}}: weapon
     case _: 0
 
-def canonical_visual_match(+player:U32,sourceTick:U32,+visual:Visual,snapshot:G.Snapshot) -> Bool:
+def canonical_visual_match(+player:U32,sourceTick:U32,+visual:Visual,snapshot:Model.Snapshot) -> Bool:
   match snapshot:
-    case G.ProjectileSnapshot{Shot.State{Space.Spatial{_,_,age,_},_,Shot.PlayerShot{},_,Components.Trajectory{_,_,_,_,_,owner,+slot,Some{+sourcePlayer}}}}: Bool.and(U32.is_eq(player,sourcePlayer),String.eq(shot_id(visual),identity(player,(sourceTick - age : U32),owner,SP.Emission{sourcePlayer,slot})))
+    case Model.ProjectileSnapshot{Shot.State{Space.Spatial{_,_,age,_},_,Shot.PlayerShot{},_,Components.Trajectory{_,_,_,_,_,owner,+slot,Some{+sourcePlayer}}}}: Bool.and(U32.is_eq(player,sourcePlayer),String.eq(shot_id(visual),identity(player,(sourceTick - age : U32),owner,SP.Emission{sourcePlayer,slot})))
     case _: False{}
 
-def canonical_visual_present(rows:List<&2,G.Snapshot>,+player:U32,+sourceTick:U32,+visual:Visual) -> Bool:
+def canonical_visual_present(rows:List<&2,Model.Snapshot>,+player:U32,+sourceTick:U32,+visual:Visual) -> Bool:
   match rows:
     case []: False{}
     case head <> tail: Bool.or(canonical_visual_match(player,sourceTick,visual,head),canonical_visual_present(tail,player,sourceTick,visual))
-def planned_snapshot(value:Visual) -> G.Snapshot: G.ProjectileSnapshot{shot_state(value)}
+def planned_snapshot(value:Visual) -> Model.Snapshot: Model.ProjectileSnapshot{shot_state(value)}
 
-def planned_visual(keep:Bool,value:Visual,+tail:List<&2,G.Snapshot>) -> List<&2,G.Snapshot>:
+def planned_visual(keep:Bool,value:Visual,+tail:List<&2,Model.Snapshot>) -> List<&2,Model.Snapshot>:
   match keep:
     case False{}: tail
     case True{}: planned_snapshot(value) <> tail
-def plan_visuals(rows:List<&2,Visual>,+player:U32,+sourceTick:U32,+canonical:List<&2,G.Snapshot>) -> List<&2,G.Snapshot>:
+def plan_visuals(rows:List<&2,Visual>,+player:U32,+sourceTick:U32,+canonical:List<&2,Model.Snapshot>) -> List<&2,Model.Snapshot>:
   match rows:
     case []: []
     case +head <> tail:
       +allowed = Bool.and(U32.is_eq(player,SP.emission_player(visual_slot(head))),Bool.and(shot_alive(visual_shot(head)),U32.is_gt(shot_pierce(visual_shot(head)),0)))
       +collision = canonical_visual_present(canonical,player,sourceTick,head)
       planned_visual(Bool.and(allowed,Bool.not(collision)),head,plan_visuals(tail,player,sourceTick,canonical))
-def planning_snapshots(player:U32,sourceTick:U32,+canonical:List<&2,G.Snapshot>,visuals:List<&2,Visual>) -> List<&2,G.Snapshot>:
-  List.append(&2,G.Snapshot,canonical,plan_visuals(visuals,player,sourceTick,canonical))
+def planning_snapshots(player:U32,sourceTick:U32,+canonical:List<&2,Model.Snapshot>,visuals:List<&2,Visual>) -> List<&2,Model.Snapshot>:
+  List.append(&2,Model.Snapshot,canonical,plan_visuals(visuals,player,sourceTick,canonical))
 def new_visual(+bornTick:U32,+originX:F32,+originY:F32,team:G.Team,+seed:U32,+request:SP.Request) -> Visual:
   match request:
     case SP.Request{+owner,+slot,level}:
@@ -536,7 +537,7 @@ def spawn_index(index:BI.Index<SP.Request>,+team:G.Team,+bornTick:U32,+originX:F
     case BI.Item{seed,request}: new_visual(bornTick,originX,originY,team,seed,request) <> tail
     case BI.Fork{_,_,zero,one}:
       List.append(&2,Visual,spawn_index(zero,team,bornTick,originX,originY,[]),spawn_index(one,team,bornTick,originX,originY,tail))
-def local_team(+player:U32,run:G.Run,+dx:F32,+dy:F32,+originX:F32,+originY:F32,+worldTick:U32,sourceTick:U32,+geometry:Geometry,+snapshots:List<&2,G.Snapshot>,visuals:List<&2,Visual>) -> G.Team:
+def local_team(+player:U32,run:Model.Run,+dx:F32,+dy:F32,+originX:F32,+originY:F32,+worldTick:U32,sourceTick:U32,+geometry:Geometry,+snapshots:List<&2,Model.Snapshot>,visuals:List<&2,Visual>) -> G.Team:
   +positioned = G.with_py(G.with_px(G.with_tick(run,worldTick),originX),originY)
   +occupied = planning_snapshots(player,sourceTick,snapshots,visuals)
   +view: G.PlayerView = G.PlayerView{player,positioned,dx,dy,True{}}
@@ -545,7 +546,7 @@ def local_team(+player:U32,run:G.Run,+dx:F32,+dy:F32,+originX:F32,+originY:F32,+
 def spawn_from_team(+team:G.Team,+bornTick:U32,+originX:F32,+originY:F32) -> List<&2,Visual>:
   match team:
     case G.Team{_,_,SP.Plan{index,_},_}: spawn_index(index,team,bornTick,originX,originY,[])
-def spawn_tick(accepted:Bool,player:U32,run:G.Run,dx:F32,dy:F32,+originX:F32,+originY:F32,+worldTick:U32,sourceTick:U32,+geometry:Geometry,+snapshots:List<&2,G.Snapshot>,visuals:List<&2,Visual>) -> List<&2,Visual>:
+def spawn_tick(accepted:Bool,player:U32,run:Model.Run,dx:F32,dy:F32,+originX:F32,+originY:F32,+worldTick:U32,sourceTick:U32,+geometry:Geometry,+snapshots:List<&2,Model.Snapshot>,visuals:List<&2,Visual>) -> List<&2,Visual>:
   match accepted:
     case False{}: []
     case True{}:
@@ -765,9 +766,9 @@ def accepted_before(accepted:Bool,has:Bool,last:U32,tick:U32) -> Bool:
   Bool.and(accepted,Bool.or(Bool.not(has),U32.is_gt(tick,last)))
 def overflow_added(before:Nat,after:Nat) -> U32:
   Policy.overflow_added(before,after)
-def cohort_run(run:G.Run,+originX:F32,+originY:F32,+worldTick:U32) -> G.Run:
+def cohort_run(run:Model.Run,+originX:F32,+originY:F32,+worldTick:U32) -> Model.Run:
   G.with_py(G.with_px(G.with_tick(run,worldTick),originX),originY)
-def accept_allowed(allowed:Bool,state:State,+player:U32,+run:G.Run,dx:F32,dy:F32,+originX:F32,+originY:F32,+worldTick:U32,+presentationTick:U32,sourceTick:U32,+targets:List<&2,Target>,snapshots:List<&2,G.Snapshot>) -> State:
+def accept_allowed(allowed:Bool,state:State,+player:U32,+run:Model.Run,dx:F32,dy:F32,+originX:F32,+originY:F32,+worldTick:U32,+presentationTick:U32,sourceTick:U32,+targets:List<&2,Target>,snapshots:List<&2,Model.Snapshot>) -> State:
   match allowed state:
     case False{} state: state
     case True{} State{+oldShots,oldKnown,history,+oldTombstones,historyEffects,_,_,display,dropped,knownDropped}:
@@ -784,7 +785,7 @@ def accept_allowed(allowed:Bool,state:State,+player:U32,+run:G.Run,dx:F32,dy:F32
       +knownOverflow = overflow_added(List.length(&2,KnownShot,knownAll),List.length(&2,KnownShot,knownBounded))
       +pendingTombstones = refresh_tombstones(oldTombstones,geometry_targets(geometry),cursor)
       State{bounded,knownBounded,recent_events(history,cursor),pendingTombstones,recent_effects(historyEffects,cursor),True{},worldTick,cursor,(dropped + overflow_added(List.length(&2,Visual,joined),List.length(&2,Visual,bounded)) : U32),(knownDropped + knownOverflow : U32)}
-def accept_tick(+state:State,accepted:Bool,player:U32,+run:G.Run,dx:F32,dy:F32,+originX:F32,+originY:F32,+worldTick:U32,+presentationTick:U32,sourceTick:U32,+targets:List<&2,Target>,+snapshots:List<&2,G.Snapshot>) -> State:
+def accept_tick(+state:State,accepted:Bool,player:U32,+run:Model.Run,dx:F32,dy:F32,+originX:F32,+originY:F32,+worldTick:U32,+presentationTick:U32,sourceTick:U32,+targets:List<&2,Target>,+snapshots:List<&2,Model.Snapshot>) -> State:
   match state:
     case State{_,_,_,_,_,has,last,_,_,_}:
       accept_allowed(accepted_before(accepted,has,last,worldTick),state,player,run,dx,dy,originX,originY,worldTick,presentationTick,sourceTick,targets,snapshots)
@@ -792,7 +793,7 @@ def accept_tick(+state:State,accepted:Bool,player:U32,+run:G.Run,dx:F32,dy:F32,+
 # Wall-animation time advances visuals once per ClientClock budget unit. The
 # caller owns exactly-once clock consumption; remote presentation ticks only
 # determine guide progress and event expiry.
-def advance_tick(+state:State,+run:G.Run,+originX:F32,+originY:F32,+presentationTick:U32,+targets:List<&2,Target>) -> State:
+def advance_tick(+state:State,+run:Model.Run,+originX:F32,+originY:F32,+presentationTick:U32,+targets:List<&2,Target>) -> State:
   match state:
     case State{shots,known,history,tombstones,historyEffects,has,last,_,dropped,knownDropped}:
       +presentedRun = G.with_py(G.with_px(run,originX),originY)
@@ -815,7 +816,7 @@ def bootstrap_finish(enabled:Bool,+state:State,+anchor:U32,+finalTick:U32) -> St
   match enabled state:
     case False{} State{shots,known,events,tombstones,effects,_,_,display,dropped,knownDropped}: State{shots,known,events,tombstones,effects,False{},anchor,display,dropped,knownDropped}
     case True{} State{shots,known,events,tombstones,effects,_,_,_,dropped,knownDropped}: State{shots,known,events,tombstones,effects,True{},finalTick,finalTick,dropped,knownDropped}
-def bootstrap_step(state:State,+player:U32,+baseRun:G.Run,+sourceTick:U32,+geometry:Geometry,+snapshots:List<&2,G.Snapshot>,+tick:U32,+direction:Prediction.Direction,point:Move.Point) -> State:
+def bootstrap_step(state:State,+player:U32,+baseRun:Model.Run,+sourceTick:U32,+geometry:Geometry,+snapshots:List<&2,Model.Snapshot>,+tick:U32,+direction:Prediction.Direction,point:Move.Point) -> State:
   match state point:
     case State{+oldShots,oldKnown,history,+oldTombstones,historyEffects,_,_,_,dropped,knownDropped} Move.Point{+x,+y}:
       +run = cohort_run(baseRun,x,y,tick)
@@ -829,7 +830,7 @@ def bootstrap_step(state:State,+player:U32,+baseRun:G.Run,+sourceTick:U32,+geome
       +knownOverflow = overflow_added(List.length(&2,KnownShot,knownAll),List.length(&2,KnownShot,knownBounded))
       +pendingTombstones = collect_pending_tombstones(advanced,geometry_targets(geometry),tick,oldTombstones)
       State{bounded,knownBounded,recent_events(history,tick),pendingTombstones,recent_effects(historyEffects,tick),True{},tick,tick,(dropped + overflow_added(List.length(&2,Visual,joined),List.length(&2,Visual,bounded)) : U32),(knownDropped + knownOverflow : U32)}
-def bootstrap_ticks(fuel:Nat,+player:U32,+baseRun:G.Run,+sourceTick:U32,+inputs:List<&2,Prediction.Input>,+distance:F32,+geometry:Geometry,+snapshots:List<&2,G.Snapshot>,+tick:U32,+point:Move.Point,state:State) -> State:
+def bootstrap_ticks(fuel:Nat,+player:U32,+baseRun:Model.Run,+sourceTick:U32,+inputs:List<&2,Prediction.Input>,+distance:F32,+geometry:Geometry,+snapshots:List<&2,Model.Snapshot>,+tick:U32,+point:Move.Point,state:State) -> State:
   match fuel:
     case 0n: state
     case 1n+rest:
@@ -838,7 +839,7 @@ def bootstrap_ticks(fuel:Nat,+player:U32,+baseRun:G.Run,+sourceTick:U32,+inputs:
       +nextPoint = Prediction.advance_point(point,distance,direction)
       +nextState:State = bootstrap_step(state,player,baseRun,sourceTick,geometry,snapshots,nextTick,direction,nextPoint)
       bootstrap_ticks(rest,player,baseRun,sourceTick,inputs,distance,geometry,snapshots,nextTick,nextPoint,nextState)
-def bootstrap(+player:U32,+run:G.Run,+sourceTick:U32,+targets:List<&2,Target>,+snapshots:List<&2,G.Snapshot>,prediction:Prediction.State) -> State:
+def bootstrap(+player:U32,+run:Model.Run,+sourceTick:U32,+targets:List<&2,Target>,+snapshots:List<&2,Model.Snapshot>,prediction:Prediction.State) -> State:
   match prediction:
     case Prediction.State{_,_,distance,enabled,inputs,+anchor,display,_,_}:
       +count = U32.min(bootstrap_cap(),Prediction.world_count(anchor,display))
@@ -933,17 +934,17 @@ def merge_bootstrap_states(+prior:State,+freshState:State,+targets:List<&2,Targe
       +knownTargets = List.append(&2,Target,targets,tombstone_rows(tombstoneRows))
       +reconciled = apply_pending_events(eventRows,boundedShots,display,knownTargets)
       State{bounded_visuals(reconciled),currentKnown,eventRows,tombstoneRows,effectRows,has,last,display,(priorDropped + freshDropped + overflow_added(List.length(&2,Visual,joinedShots),List.length(&2,Visual,boundedShots)) : U32),(priorKnownDropped + freshKnownDropped + knownOverflow : U32)}
-def ensure_bootstrap_selected(already:Bool,+enabled:Bool,+state:State,+player:U32,+run:G.Run,+sourceTick:U32,+targets:List<&2,Target>,+snapshots:List<&2,G.Snapshot>,+prediction:Prediction.State) -> BootstrapResult:
+def ensure_bootstrap_selected(already:Bool,+enabled:Bool,+state:State,+player:U32,+run:Model.Run,+sourceTick:U32,+targets:List<&2,Target>,+snapshots:List<&2,Model.Snapshot>,+prediction:Prediction.State) -> BootstrapResult:
   match already:
     case True{}: BootstrapResult{state,bootstrap_should_start(already,enabled)}
     case False{}:
       +freshState = bootstrap(player,run,sourceTick,targets,snapshots,prediction)
       BootstrapResult{merge_bootstrap_states(state,freshState,targets),bootstrap_should_start(already,enabled)}
-def ensure_bootstrap_enabled(already:Bool,+state:State,+player:U32,+run:G.Run,+sourceTick:U32,+targets:List<&2,Target>,+snapshots:List<&2,G.Snapshot>,+prediction:Prediction.State) -> BootstrapResult:
+def ensure_bootstrap_enabled(already:Bool,+state:State,+player:U32,+run:Model.Run,+sourceTick:U32,+targets:List<&2,Target>,+snapshots:List<&2,Model.Snapshot>,+prediction:Prediction.State) -> BootstrapResult:
   match prediction:
     case Prediction.State{_,_,_,enabled,_,_,_,_,_}:
       ensure_bootstrap_selected(already,enabled,state,player,run,sourceTick,targets,snapshots,prediction)
-def ensure_bootstrap(+state:State,+player:U32,+run:G.Run,+sourceTick:U32,+targets:List<&2,Target>,+snapshots:List<&2,G.Snapshot>,+prediction:Prediction.State) -> BootstrapResult:
+def ensure_bootstrap(+state:State,+player:U32,+run:Model.Run,+sourceTick:U32,+targets:List<&2,Target>,+snapshots:List<&2,Model.Snapshot>,+prediction:Prediction.State) -> BootstrapResult:
   ensure_bootstrap_enabled(has_accepted(state),state,player,run,sourceTick,targets,snapshots,prediction)
 def should_draw(value:Visual) -> Bool:
   Policy.should_draw(policy_visual(value))

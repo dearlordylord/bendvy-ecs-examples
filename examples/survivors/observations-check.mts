@@ -41,7 +41,7 @@ const items: BendABI.PickupState.Item[] = [
   { $: "Chest" },
   { $: "Relic", stage: 2 }
 ]
-const snapshots: BendABI.Game.Snapshot[] = items.map((item, index) => ({
+const snapshots: BendABI.GameObservation.Snapshot[] = items.map((item, index) => ({
   $: "PickupSnapshot",
   pickup: {
     $: "State",
@@ -201,7 +201,7 @@ for (const changed of [
     s.$ === "PickupSnapshot" ? { ...s, pickup: { ...s.pickup, payload: { ...s.pickup.payload, generation: 99 } } } : s
   ),
   [...snapshots].reverse()
-] satisfies BendABI.Game.Snapshot[][]) {
+] satisfies BendABI.GameObservation.Snapshot[][]) {
   const original = { ...initial, view: { ...initial.view, snapshots: list(snapshots) } }
   const mutated = { ...original, view: { ...original.view, snapshots: list(changed) } }
   assert.notDeepEqual(Core.restore_network((await roundtrip(mutated)).view), Core.restore_network(original.view))

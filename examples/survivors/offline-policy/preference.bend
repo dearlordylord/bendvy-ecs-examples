@@ -1,6 +1,6 @@
 import Base
 import ../offline-policy.bend as P
-import ../game.bend as G
+import ../game-observation.bend as G
 import ../offline-threats.bend as T
 import ../projectile-state.bend as Shot
 import ../enemy-combat.bend as Enemy

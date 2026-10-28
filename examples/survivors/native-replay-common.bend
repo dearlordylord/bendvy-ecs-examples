@@ -1,3 +1,4 @@
+import game-observation.bend as Model
 import run-state.bend as RS
 import Base
 import game.bend as G
@@ -22,10 +23,10 @@ def start(profile: U32,seed: U32) -> G.Packet:
   match profile:
     case 1: B.advanced_start_seed(seed)
     case _: B.fresh_start_seed(seed)
-def tick(run: G.Run) -> U32:
+def tick(run: Model.Run) -> U32:
   match run:
-    case G.Run{RS.Session{_,tick,_,_,_,_,_,_,_,_,_,_,_},RS.PlayerState{_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_}}: tick
-def is_terminal(run: G.Run) -> Bool: U32.is_le(3,G.run_phase(run))
+    case Model.Run{RS.Session{_,tick,_,_,_,_,_,_,_,_,_,_,_},RS.PlayerState{_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_}}: tick
+def is_terminal(run: Model.Run) -> Bool: U32.is_le(3,G.run_phase(run))
 def action_tick(action: F.Action) -> U32:
   match action:
     case F.ReplayMove{tick,_,_,_}: tick
@@ -38,11 +39,11 @@ def choose_valid(valid: Bool,state: G.State,choice: U32) -> G.Packet:
   match valid:
     case True{}: G.choose(state,choice)
     case False{}: G.Failed{"Replay upgrade index is not an offered action"}
-def apply_checked(valid: Bool,action: F.Action,state: G.State,offers: List<&2,G.Offer>) -> G.Packet:
+def apply_checked(valid: Bool,action: F.Action,state: G.State,offers: List<&2,Model.Offer>) -> G.Packet:
   match valid action:
     case False{} _: G.Failed{"Replay action tick/phase differs from actual game state"}
     case True{} F.ReplayMove{_,_,dx,dy}: G.advance(state,F.from_bits(dx),F.from_bits(dy))
-    case True{} F.ReplayUpgrade{_,_,+choice}: choose_valid(Nat.is_lt(U32.to_nat(choice),List.length(&2,G.Offer,offers)),state,choice)
+    case True{} F.ReplayUpgrade{_,_,+choice}: choose_valid(Nat.is_lt(U32.to_nat(choice),List.length(&2,Model.Offer,offers)),state,choice)
 def apply(+action: F.Action,state: G.State) -> G.Packet:
   match state:
     case G.State{world,+run,+offers,snapshots,pending}:

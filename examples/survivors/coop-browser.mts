@@ -94,7 +94,7 @@ let predictionLead = 4,
   authorityInputTiming: unknown
 const sentCommandTimes = new Map<number, number>()
 let localShots = LocalProjectiles.empty(),
-  localRun: BendABI.Game.Run | null,
+  localRun: BendABI.GameObservation.Run | null,
   localTargets: BendList<BendABI.CoopLocalProjectiles.Target> = { $: "Nil" },
   remoteFrame: Frame | null
 let contactJournal = HitJournal.fresh(0),

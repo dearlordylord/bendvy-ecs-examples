@@ -1,3 +1,4 @@
+import ./game-observation.bend as Model
 import run-state.bend as RS
 import Base
 import game-components.bend as Components
@@ -7,11 +8,11 @@ import ./body-index.bend as BI
 
 # Shared detached combat data only: projectile birth identities and the native
 # Bend JSON ABI. There is no weapon-only simulation or trajectory retention.
-def birth_at(births:BI.Index<U32>,tick:U32,+snapshot:G.Snapshot) -> U32:
+def birth_at(births:BI.Index<U32>,tick:U32,+snapshot:Model.Snapshot) -> U32:
   BI.get(~U32,births,G.snapshot_identity(snapshot),(tick - G.snapshot_age(snapshot) : U32))
-def birth_entry(+snapshot:G.Snapshot,+tick:U32,+prior:BI.Index<U32>,fresh:BI.Index<U32>,index:BI.Index<U32>) -> BI.Index<U32>:
+def birth_entry(+snapshot:Model.Snapshot,+tick:U32,+prior:BI.Index<U32>,fresh:BI.Index<U32>,index:BI.Index<U32>) -> BI.Index<U32>:
   BI.insert(~U32,index,G.snapshot_identity(snapshot),BI.get(~U32,fresh,G.snapshot_identity(snapshot),birth_at(prior,tick,snapshot)))
-def birth_map(rows:List<&2,G.Snapshot>,+tick:U32,+prior:BI.Index<U32>,+fresh:BI.Index<U32>,index:BI.Index<U32>) -> BI.Index<U32>:
+def birth_map(rows:List<&2,Model.Snapshot>,+tick:U32,+prior:BI.Index<U32>,+fresh:BI.Index<U32>,index:BI.Index<U32>) -> BI.Index<U32>:
   match rows:
     case []: index
     case head <> tail: birth_map(tail,tick,prior,fresh,birth_entry(head,tick,prior,fresh,index))
@@ -39,9 +40,9 @@ def native_personal(value:RS.PlayerState) -> String:
   match value:
     case RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}: "{\"$\":\"PlayerState\"" ++ ",\"px\":" ++ F32.show(px) ++ ",\"py\":" ++ F32.show(py) ++ ",\"hp\":" ++ U32.show(hp) ++ ",\"maxHp\":" ++ U32.show(maxHp) ++ ",\"character\":" ++ U32.show(character) ++ ",\"weapons\":" ++ native_nums(weapons) ++ ",\"passives\":" ++ native_nums(passives) ++ ",\"invuln\":" ++ U32.show(invuln) ++ ",\"arcana\":" ++ U32.show(arcana) ++ ",\"meta\":" ++ U32.show(meta) ++ ",\"revivals\":" ++ U32.show(revivals) ++ ",\"rerolls\":" ++ U32.show(rerolls) ++ ",\"banishes\":" ++ U32.show(banishes) ++ ",\"skips\":" ++ U32.show(skips) ++ ",\"bannedWeapons\":" ++ U32.show(bannedWeapons) ++ ",\"bannedPassives\":" ++ U32.show(bannedPassives) ++ "}"
 
-def native_run(value:G.Run) -> String:
+def native_run(value:Model.Run) -> String:
   match value:
-    case G.Run{session,personal}: "{\"$\":\"Run\",\"session\":" ++ native_session(session) ++ ",\"player\":" ++ native_personal(personal) ++ "}"
+    case Model.Run{session,personal}: "{\"$\":\"Run\",\"session\":" ++ native_session(session) ++ ",\"player\":" ++ native_personal(personal) ++ "}"
 
 def native_births(index:BI.Index<U32>) -> String:
   match index:

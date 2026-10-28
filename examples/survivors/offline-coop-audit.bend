@@ -1,3 +1,4 @@
+import game-observation.bend as Model
 import run-state.bend as RS
 import enemy-combat.bend as Enemy
 import enemy-spatial.bend as Space
@@ -7,7 +8,6 @@ import pickup-state.bend as Pickup
 import Base
 import game-components.bend as Components
 import game-storage.bend as Storage
-import game.bend as G
 import coop-core.bend as Core
 import native-economy.bend as Economy
 import offline-policy.bend as Policy
@@ -15,7 +15,7 @@ import offline-coop-step.bend as Step
 import offline-coop-control.bend as Control
 import offline-coop-observe.bend as O
 
-type Observed is Type: Observed{state:Core.CoreState,shared:RS.Session,p0:G.Run,p1:G.Run,snapshots:List<&2,G.Snapshot>,round:U32,required:List<&2,U32>,offers:List<&2,Core.PlayerOffers>}
+type Observed is Type: Observed{state:Core.CoreState,shared:RS.Session,p0:Model.Run,p1:Model.Run,snapshots:List<&2,Model.Snapshot>,round:U32,required:List<&2,U32>,offers:List<&2,Core.PlayerOffers>}
 type Checked is Type: CoopReady{observed:Observed} CoopBroken{message:String}
 type Progress is Type: Progress{cell:Array<Step.Progress>}
 
@@ -25,11 +25,11 @@ def profile_character(advanced:Bool) -> U32: Step.profile_character(advanced)
 def profile_arcana(advanced:Bool) -> U32: Step.profile_arcana(advanced)
 def start(seed:U32,advanced:Bool,character0:U32,character1:U32,arcana0:U32,arcana1:U32) -> Core.CorePacket: Step.start(seed,advanced,character0,character1,arcana0,arcana1)
 
-def observed_players(state: Core.CoreState,+shared: RS.Session,snapshots: List<&2,G.Snapshot>,round: U32,required: List<&2,U32>,offers: List<&2,Core.PlayerOffers>,p0: Maybe<&2,RS.PlayerState>,p1: Maybe<&2,RS.PlayerState>) -> Checked:
+def observed_players(state: Core.CoreState,+shared: RS.Session,snapshots: List<&2,Model.Snapshot>,round: U32,required: List<&2,U32>,offers: List<&2,Core.PlayerOffers>,p0: Maybe<&2,RS.PlayerState>,p1: Maybe<&2,RS.PlayerState>) -> Checked:
   match p0 p1:
     case Some{p0} Some{p1}: CoopReady{Observed{state,shared,Core.player_step_context(shared,p0),Core.player_step_context(shared,p1),snapshots,round,required,offers}}
     case _ _: CoopBroken{"native co-op requires both player records"}
-def observed_loaded(+shared:RS.Session,+refs:List<&2,Core.PlayerRef>,+snapshots:List<&2,G.Snapshot>,+round:U32,+required:List<&2,U32>,+offers:List<&2,Core.PlayerOffers>,pending:List<&2,Core.Reward>,result:Storage.World() & List<&2,Components.PlayerRecord>) -> Checked:
+def observed_loaded(+shared:RS.Session,+refs:List<&2,Core.PlayerRef>,+snapshots:List<&2,Model.Snapshot>,+round:U32,+required:List<&2,U32>,+offers:List<&2,Core.PlayerOffers>,pending:List<&2,Core.Reward>,result:Storage.World() & List<&2,Components.PlayerRecord>) -> Checked:
   match result:
     case (world,+players): observed_players(Core.CoreState{world,shared,refs,snapshots,round,required,offers,pending},shared,snapshots,round,required,offers,Core.find_player(players,0),Core.find_player(players,1))
 def observe(packet:Core.CorePacket) -> Checked:
@@ -43,10 +43,10 @@ def shared_action(value:Maybe<&2,Step.Action>) -> Maybe<&2,O.Action>:
     case None{}: None{}
     case Some{Step.CoopMove{tick,dx0,dy0,dx1,dy1}}: Some{O.AuditMove{tick,dx0,dy0,dx1,dy1}}
     case Some{Step.CoopChoose{tick,player,round,index}}: Some{O.AuditChoose{tick,player,round,index}}
-def choose_or_move(active:Bool,required:List<&2,U32>,state:Core.CoreState,shared:RS.Session,p0:G.Run,p1:G.Run,rows:List<&2,G.Snapshot>,round:U32,offers:List<&2,Core.PlayerOffers>,m0:Policy.Memory,m1:Policy.Memory,choices0:U32,choices1:U32) -> Progress:
+def choose_or_move(active:Bool,required:List<&2,U32>,state:Core.CoreState,shared:RS.Session,p0:Model.Run,p1:Model.Run,rows:List<&2,Model.Snapshot>,round:U32,offers:List<&2,Core.PlayerOffers>,m0:Policy.Memory,m1:Policy.Memory,choices0:U32,choices1:U32) -> Progress:
   Progress{Step.decide(active,required,ALeaf{Step.Decision{state,p0,p1,rows,round,offers,m0,m1,choices0,choices1,RS.session_tick(shared)}})}
 
-def fields(seed:U32,index:U32,ticks:U32,shared:RS.Session,p0:G.Run,p1:G.Run,rows:List<&2,G.Snapshot>,choices0:U32,choices1:U32) -> String:
+def fields(seed:U32,index:U32,ticks:U32,shared:RS.Session,p0:Model.Run,p1:Model.Run,rows:List<&2,Model.Snapshot>,choices0:U32,choices1:U32) -> String:
   Step.fields(seed,index,ticks,shared,p0,p1,rows,choices0,choices1)
 
 type Mode is Data: Off{} Scheduled{} Dense{} Terminal{}
@@ -90,7 +90,7 @@ def ended(audit:Audit,tick:U32,outcome:Control.Outcome) -> IO(Unit):
   match audit:
     case Audit{Off{},_,_,_}: IO.pure(Unit,Unit{})
     case Audit{_,actions,checkpoints,_}: IO.print("{\"type\":\"audit-end\",\"actions\":" ++ U32.show(actions) ++ ",\"checkpoints\":" ++ U32.show(checkpoints) ++ ",\"tick\":" ++ U32.show(tick) ++ ",\"outcome\":\"" ++ Control.name(outcome) ++ "\"}")
-def capture_done(reason:String,fuel:Nat,nextSample:Nat,m0:Policy.Memory,m1:Policy.Memory,choices0:U32,choices1:U32,audit:Audit,+shared:RS.Session,p0:G.Run,p1:G.Run,rows:List<&2,G.Snapshot>,round:U32,required:List<&2,U32>,offers:List<&2,Core.PlayerOffers>,capture:O.Capture) -> IO(AuditResult):
+def capture_done(reason:String,fuel:Nat,nextSample:Nat,m0:Policy.Memory,m1:Policy.Memory,choices0:U32,choices1:U32,audit:Audit,+shared:RS.Session,p0:Model.Run,p1:Model.Run,rows:List<&2,Model.Snapshot>,round:U32,required:List<&2,U32>,offers:List<&2,Core.PlayerOffers>,capture:O.Capture) -> IO(AuditResult):
   match audit capture:
     case _ O.Unobservable{_}: IO.die(AuditResult,1,"Audit cannot serialize opaque deferred commands")
     case Audit{mode,+actions,checkpoints,+nextCapture} O.Captured{state,text}:

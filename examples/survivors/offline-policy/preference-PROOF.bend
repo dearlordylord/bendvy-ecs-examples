@@ -2,7 +2,7 @@ import Base
 import ./preference.bend as Nav
 import ./preference-LAWS.bend as L
 import ../offline-policy.bend as P
-import ../game.bend as G
+import ../game-observation.bend as G
 import ../enemy-spatial.bend as Space
 import ../stream-bot.bend as Bot
 

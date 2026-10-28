@@ -1,3 +1,4 @@
+import game-observation.bend as Model
 import pickup-encoder.bend as PickupEncoder
 import Base
 import enemy-status-encoder.bend as StatusEncoder
@@ -18,12 +19,12 @@ def native_enemy(enemy: Enemy.State) -> String:
   match enemy:
     case Enemy.State{Space.Spatial{x,y,age,radius},archetype,identity,Components.Vitals{health,maximum},status}:
       "{\"$\":\"State\",\"spatial\":{\"$\":\"Spatial\",\"x\":" ++ F32.show(x) ++ ",\"y\":" ++ F32.show(y) ++ ",\"age\":" ++ U32.show(age) ++ ",\"radius\":" ++ F32.show(radius) ++ "},\"archetype\":" ++ U32.show(archetype) ++ ",\"identity\":" ++ U32.show(identity) ++ ",\"vitals\":{\"$\":\"Vitals\",\"health\":" ++ U32.show(health) ++ ",\"maximum\":" ++ U32.show(maximum) ++ "},\"status\":" ++ StatusEncoder.native(status) ++ "}"
-def native_snapshot(value:G.Snapshot) -> String:
+def native_snapshot(value:Model.Snapshot) -> String:
   match value:
-    case G.ProjectileSnapshot{projectile}: "{\"$\":\"ProjectileSnapshot\",\"projectile\":" ++ ShotEncoder.native_state(projectile) ++ "}"
-    case G.EnemySnapshot{enemy}: "{\"$\":\"EnemySnapshot\",\"enemy\":" ++ native_enemy(enemy) ++ "}"
-    case G.PickupSnapshot{pickup}: "{\"$\":\"PickupSnapshot\",\"pickup\":" ++ PickupEncoder.native_state(pickup) ++ "}"
-def native_snapshots(rows:List<&2,G.Snapshot>) -> String:
+    case Model.ProjectileSnapshot{projectile}: "{\"$\":\"ProjectileSnapshot\",\"projectile\":" ++ ShotEncoder.native_state(projectile) ++ "}"
+    case Model.EnemySnapshot{enemy}: "{\"$\":\"EnemySnapshot\",\"enemy\":" ++ native_enemy(enemy) ++ "}"
+    case Model.PickupSnapshot{pickup}: "{\"$\":\"PickupSnapshot\",\"pickup\":" ++ PickupEncoder.native_state(pickup) ++ "}"
+def native_snapshots(rows:List<&2,Model.Snapshot>) -> String:
   match rows:
     case []: "{\"$\":\"Nil\"}"
     case head <> tail: "{\"$\":\"Con\",\"head\":" ++ native_snapshot(head) ++ ",\"tail\":" ++ native_snapshots(tail) ++ "}"

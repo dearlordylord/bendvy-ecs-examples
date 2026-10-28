@@ -1,3 +1,4 @@
+import game-observation.bend as Model
 import run-state.bend as RS
 import Base
 import game-components.bend as Components
@@ -109,60 +110,60 @@ def set_recorded(ui: Ui,value: U32) -> Ui:
 def set_frames(ui: Ui,value: U32) -> Ui:
   match ui:
     case Ui{screen,tab,page,selected,character,stage,arcana,mode,paused,keys,quit,dirty,recorded,frames,clock,lag}: Ui{screen,tab,page,selected,character,stage,arcana,mode,paused,keys,quit,dirty,recorded,value,clock,lag}
-def run_phase(run: G.Run) -> U32:
+def run_phase(run: Model.Run) -> U32:
   match run:
-    case G.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: phase
-def run_tick(run: G.Run) -> U32:
+    case Model.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: phase
+def run_tick(run: Model.Run) -> U32:
   match run:
-    case G.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: tick
-def run_px(run: G.Run) -> F32:
+    case Model.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: tick
+def run_px(run: Model.Run) -> F32:
   match run:
-    case G.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: px
-def run_py(run: G.Run) -> F32:
+    case Model.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: px
+def run_py(run: Model.Run) -> F32:
   match run:
-    case G.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: py
-def run_hp(run: G.Run) -> U32:
+    case Model.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: py
+def run_hp(run: Model.Run) -> U32:
   match run:
-    case G.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: hp
-def run_maxHp(run: G.Run) -> U32:
+    case Model.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: hp
+def run_maxHp(run: Model.Run) -> U32:
   match run:
-    case G.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: maxHp
-def run_xp(run: G.Run) -> U32:
+    case Model.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: maxHp
+def run_xp(run: Model.Run) -> U32:
   match run:
-    case G.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: xp
-def run_xpNeed(run: G.Run) -> U32:
+    case Model.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: xp
+def run_xpNeed(run: Model.Run) -> U32:
   match run:
-    case G.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: xpNeed
-def run_level(run: G.Run) -> U32:
+    case Model.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: xpNeed
+def run_level(run: Model.Run) -> U32:
   match run:
-    case G.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: level
-def run_kills(run: G.Run) -> U32:
+    case Model.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: level
+def run_kills(run: Model.Run) -> U32:
   match run:
-    case G.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: kills
-def run_gold(run: G.Run) -> U32:
+    case Model.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: kills
+def run_gold(run: Model.Run) -> U32:
   match run:
-    case G.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: gold
-def run_weapons(run: G.Run) -> List<&2,U32>:
+    case Model.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: gold
+def run_weapons(run: Model.Run) -> List<&2,U32>:
   match run:
-    case G.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: weapons
-def run_passives(run: G.Run) -> List<&2,U32>:
+    case Model.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: weapons
+def run_passives(run: Model.Run) -> List<&2,U32>:
   match run:
-    case G.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: passives
-def run_invuln(run: G.Run) -> U32:
+    case Model.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: passives
+def run_invuln(run: Model.Run) -> U32:
   match run:
-    case G.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: invuln
-def run_rerolls(run: G.Run) -> U32:
+    case Model.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: invuln
+def run_rerolls(run: Model.Run) -> U32:
   match run:
-    case G.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: rerolls
-def run_banishes(run: G.Run) -> U32:
+    case Model.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: rerolls
+def run_banishes(run: Model.Run) -> U32:
   match run:
-    case G.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: banishes
-def run_skips(run: G.Run) -> U32:
+    case Model.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: banishes
+def run_skips(run: Model.Run) -> U32:
   match run:
-    case G.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: skips
-def run_stage(run: G.Run) -> U32:
+    case Model.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: skips
+def run_stage(run: Model.Run) -> U32:
   match run:
-    case G.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: stage
+    case Model.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: stage
 
 def ui_clock(ui: Ui) -> Nat:
   match ui:
@@ -322,12 +323,12 @@ def projectile_sprite(projectile: Shot.State,+px: F32,+py: F32,tail: List<&2,D.R
       body_visible(body_on_screen(sx,sy,scaled),kind,weapon,sx,sy,scaled,body_color(kind,weapon),tail)
     case _: tail
 # Draw the original completed phase order, rather than grouping the new types.
-def actor_sprites(rows: List<&2,G.Snapshot>,+px: F32,+py: F32,tail: List<&2,D.Rect>) -> List<&2,D.Rect>:
+def actor_sprites(rows: List<&2,Model.Snapshot>,+px: F32,+py: F32,tail: List<&2,D.Rect>) -> List<&2,D.Rect>:
   match rows:
     case []: tail
-    case G.EnemySnapshot{enemy} <> rest: enemy_sprite(enemy,px,py,actor_sprites(rest,px,py,tail))
-    case G.ProjectileSnapshot{projectile} <> rest: projectile_sprite(projectile,px,py,actor_sprites(rest,px,py,tail))
-    case G.PickupSnapshot{pickup} <> rest: pickup_sprite(pickup,px,py,actor_sprites(rest,px,py,tail))
+    case Model.EnemySnapshot{enemy} <> rest: enemy_sprite(enemy,px,py,actor_sprites(rest,px,py,tail))
+    case Model.ProjectileSnapshot{projectile} <> rest: projectile_sprite(projectile,px,py,actor_sprites(rest,px,py,tail))
+    case Model.PickupSnapshot{pickup} <> rest: pickup_sprite(pickup,px,py,actor_sprites(rest,px,py,tail))
 # Health overlays are typed enemy observations and are drawn after every sprite.
 def enemy_healthbars(rows: List<&2,Enemy.State>,+px: F32,+py: F32,tail: List<&2,D.Rect>) -> List<&2,D.Rect>:
   match rows:
@@ -339,7 +340,7 @@ def enemy_healthbars(rows: List<&2,Enemy.State>,+px: F32,+py: F32,tail: List<&2,
       healthbar_visible(body_on_screen(sx,sy,scaled),0,health,maximum,sx,sy,scaled,enemy_healthbars(rest,px,py,tail))
 def enemies(+rows: List<&2,Enemy.State>,+px: F32,+py: F32,tail: List<&2,D.Rect>) -> List<&2,D.Rect>:
   enemy_healthbars(rows,px,py,enemy_sprites(rows,px,py,tail))
-def actors(+rows: List<&2,G.Snapshot>,+px: F32,+py: F32,tail: List<&2,D.Rect>) -> List<&2,D.Rect>:
+def actors(+rows: List<&2,Model.Snapshot>,+px: F32,+py: F32,tail: List<&2,D.Rect>) -> List<&2,D.Rect>:
   enemy_healthbars(G.enemy_observations(rows),px,py,actor_sprites(rows,px,py,tail))
 
 def loadout(rows: List<&2,U32>,+index: U32,+x: F32,+y: F32,+category: U32,tail: List<&2,D.Rect>) -> List<&2,D.Rect>:
@@ -364,7 +365,7 @@ def ready_notice(phase: U32,tail: List<&2,D.Rect>) -> List<&2,D.Rect>:
     case 1: D.text("E UPGRADE READY",192.0,36.0,1.0,15584891,tail)
     case 2: D.text("E TREASURE READY",192.0,36.0,1.0,15584891,tail)
     case _: tail
-def hud(+run: G.Run,tail: List<&2,D.Rect>) -> List<&2,D.Rect>:
+def hud(+run: Model.Run,tail: List<&2,D.Rect>) -> List<&2,D.Rect>:
   ready_notice(run_phase(run),D.text("HP " ++ U32.show(run_hp(run)) ++ "/" ++ U32.show(run_maxHp(run)),12.0,12.0,1.0,15196103,
   D.text("LV " ++ U32.show(run_level(run)) ++ "   " ++ U32.show((run_tick(run) / 3600 : U32)) ++ ":" ++ seconds((run_tick(run) / 60 % 60 : U32)),192.0,12.0,1.0,15584891,
   D.text("KILLS " ++ U32.show(run_kills(run)),370.0,12.0,1.0,15196103,
@@ -382,9 +383,9 @@ def offer_label(kind: U32,+id: U32,level: U32) -> String:
     case 3: C.evolved_name(id)
     case 5: C.name(8,id)
     case _: "RESTORE / GOLD"
-def offer_name(offer: G.Offer) -> String:
+def offer_name(offer: Model.Offer) -> String:
   match offer:
-    case G.Offer{kind,id,level}: offer_label(kind,id,level)
+    case Model.Offer{kind,id,level}: offer_label(kind,id,level)
 
 def offer_detail_kind(kind: U32,id: U32) -> String:
   match kind:
@@ -394,18 +395,18 @@ def offer_detail_kind(kind: U32,id: U32) -> String:
     case 3: C.evolved_description(id)
     case 5: C.description(8,id)
     case _: "Collect bonus gold for permanent upgrades."
-def offer_detail(offer: G.Offer) -> String:
+def offer_detail(offer: Model.Offer) -> String:
   match offer:
-    case G.Offer{kind,id,level}: offer_detail_kind(kind,id)
+    case Model.Offer{kind,id,level}: offer_detail_kind(kind,id)
 
-def offer_rows(rows: List<&2,G.Offer>,+index: U32,tail: List<&2,D.Rect>) -> List<&2,D.Rect>:
+def offer_rows(rows: List<&2,Model.Offer>,+index: U32,tail: List<&2,D.Rect>) -> List<&2,D.Rect>:
   match rows:
     case []: tail
     case +offer <> rest:
       +y = (116.0 + U32.to_f32(index) * 58.0 : F32)
       D.text(U32.show((index + 1 : U32)) ++ "  " ++ offer_name(offer),52.0,(y + 9.0 : F32),1.0,15584891,D.wrapped(offer_detail(offer),52.0,(y + 24.0 : F32),52.0,458.0,(y + 43.0 : F32),15196103,border(42.0,y,428.0,54.0,4020038,D.rect(42.0,y,428.0,54.0,1186082,offer_rows(rest,(index + 1 : U32),tail)))))
 
-def modal(phase: U32,+run: G.Run,offers: List<&2,G.Offer>,paused: U32,tail: List<&2,D.Rect>) -> List<&2,D.Rect>:
+def modal(phase: U32,+run: Model.Run,offers: List<&2,Model.Offer>,paused: U32,tail: List<&2,D.Rect>) -> List<&2,D.Rect>:
   match phase paused:
     case 0 0: tail
     case 0 p:
@@ -429,18 +430,18 @@ def map_marker(item: Pickup.Item,x: F32,y: F32,tail: List<&2,D.Rect>) -> List<&2
     case Pickup.Chest{}: D.rect((map_coord(x,48.0) - 2.0 : F32),(map_coord(y,96.0) - 2.0 : F32),5.0,5.0,16768903,tail)
     case Pickup.Relic{_}: D.rect((map_coord(x,48.0) - 2.0 : F32),(map_coord(y,96.0) - 2.0 : F32),5.0,5.0,13948927,tail)
     case _: tail
-def map_markers(rows: List<&2,G.Snapshot>,tail: List<&2,D.Rect>) -> List<&2,D.Rect>:
+def map_markers(rows: List<&2,Model.Snapshot>,tail: List<&2,D.Rect>) -> List<&2,D.Rect>:
   match rows:
     case []: tail
-    case G.PickupSnapshot{Pickup.State{Space.Spatial{x,y,_,_},Pickup.Payload{item,_,True{}},_}} <> rest: map_marker(item,x,y,map_markers(rest,tail))
+    case Model.PickupSnapshot{Pickup.State{Space.Spatial{x,y,_,_},Pickup.Payload{item,_,True{}},_}} <> rest: map_marker(item,x,y,map_markers(rest,tail))
     case _ <> rest: map_markers(rest,tail)
-def map_view(+run: G.Run,tail: List<&2,D.Rect>) -> List<&2,D.Rect>:
+def map_view(+run: Model.Run,tail: List<&2,D.Rect>) -> List<&2,D.Rect>:
   +left = F32.max(0.0,(run_px(run) - V.native_center_x() / V.native_scale() : F32))
   +top = F32.max(0.0,(run_py(run) - V.native_center_y() / V.native_scale() : F32))
   +right = F32.min(G.world_size(),(run_px(run) + (512.0 - V.native_center_x()) / V.native_scale() : F32))
   +bottom = F32.min(G.world_size(),(run_py(run) + (384.0 - V.native_center_y()) / V.native_scale() : F32))
   border(map_coord(left,48.0),map_coord(top,96.0),((right - left) * 224.0 / G.world_size() : F32),((bottom - top) * 224.0 / G.world_size() : F32),7985384,tail)
-def pause_map(+run: G.Run,rows: List<&2,G.Snapshot>,tail: List<&2,D.Rect>) -> List<&2,D.Rect>:
+def pause_map(+run: Model.Run,rows: List<&2,Model.Snapshot>,tail: List<&2,D.Rect>) -> List<&2,D.Rect>:
   D.text("PAUSED / MAP",48.0,68.0,2.0,15584891,
   D.text("YOU",298.0,112.0,1.0,15584891,
   D.text("CHEST",298.0,140.0,1.0,16768903,
@@ -452,13 +453,13 @@ def pause_map(+run: G.Run,rows: List<&2,G.Snapshot>,tail: List<&2,D.Rect>) -> Li
   D.rect((map_coord(run_px(run),48.0) - 2.0 : F32),(map_coord(run_py(run),96.0) - 2.0 : F32),5.0,5.0,15584891,
   map_markers(rows,map_view(run,border(48.0,96.0,224.0,224.0,4020038,
   D.rect(48.0,96.0,224.0,224.0,1186082,D.rect(28.0,52.0,456.0,296.0,724763,tail))))))))))))))
-def map_phase(phase: U32,+run: G.Run,rows: List<&2,G.Snapshot>,offers: List<&2,G.Offer>,paused: U32,tail: List<&2,D.Rect>) -> List<&2,D.Rect>:
+def map_phase(phase: U32,+run: Model.Run,rows: List<&2,Model.Snapshot>,offers: List<&2,Model.Offer>,paused: U32,tail: List<&2,D.Rect>) -> List<&2,D.Rect>:
   match phase:
     case 0: pause_map(run,rows,tail)
     case 1: pause_map(run,rows,tail)
     case 2: pause_map(run,rows,tail)
     case phase: modal(phase,run,offers,paused,tail)
-def world_modal(+run: G.Run,rows: List<&2,G.Snapshot>,offers: List<&2,G.Offer>,paused: U32,tail: List<&2,D.Rect>) -> List<&2,D.Rect>:
+def world_modal(+run: Model.Run,rows: List<&2,Model.Snapshot>,offers: List<&2,Model.Offer>,paused: U32,tail: List<&2,D.Rect>) -> List<&2,D.Rect>:
   match paused:
     case 1: map_phase(run_phase(run),run,rows,offers,1,tail)
     case p: modal(run_phase(run),run,offers,p,tail)
@@ -473,7 +474,7 @@ def ground_color(outside: Bool,hazard: Bool,warning: Bool,checker: U32) -> U32:
     case _ True{} True{}: 9010480
     case _ True{} False{}: 3419167
     case _ _ _: select_color(U32.is_eq(checker,0),1186848,1384487)
-def ground(fuel: Nat,+index: U32,+run: G.Run,tail: List<&2,D.Rect>) -> List<&2,D.Rect>:
+def ground(fuel: Nat,+index: U32,+run: Model.Run,tail: List<&2,D.Rect>) -> List<&2,D.Rect>:
   match fuel:
     case 0n: tail
     case 1n+k:
@@ -484,17 +485,17 @@ def ground(fuel: Nat,+index: U32,+run: G.Run,tail: List<&2,D.Rect>) -> List<&2,D
       +period = G.at([360,420,240,300,180],run_stage(run))
       color = ground_color(Bool.or(Bool.or(F32.is_lt(wx,0.0),F32.is_lt(wy,0.0)),Bool.or(F32.is_lt(G.world_size(),wx),F32.is_lt(G.world_size(),wy))),ground_hazard(run_stage(run),wx,wy),U32.is_le((period - 120 : U32),(run_tick(run) % period : U32)),((F32.to_u32(F32.abs(wx)) / 64 + F32.to_u32(F32.abs(wy)) / 64) % 2 : U32))
       D.rect(x,y,16.0,16.0,color,ground(k,(index + 1 : U32),run,tail))
-def gameplay_rows(+run: G.Run,offers: List<&2,G.Offer>,+ui: Ui,+snapshots: List<&2,G.Snapshot>) -> List<&2,D.Rect>:
+def gameplay_rows(+run: Model.Run,offers: List<&2,Model.Offer>,+ui: Ui,+snapshots: List<&2,Model.Snapshot>) -> List<&2,D.Rect>:
   hud(run,world_modal(run,snapshots,offers,ui_paused(ui),
   Art.player(256.0,210.0,ui_character(ui),run_invuln(run),
   actors(snapshots,run_px(run),run_py(run),ground(768n,0,run,[])))))
 
-def scene_screen(screen: U32,+ui: Ui,+profile: P.Profile,run: G.Run,offers: List<&2,G.Offer>,snapshots: List<&2,G.Snapshot>) -> Image:
+def scene_screen(screen: U32,+ui: Ui,+profile: P.Profile,run: Model.Run,offers: List<&2,Model.Offer>,snapshots: List<&2,Model.Snapshot>) -> Image:
   match screen:
     case 1: D.image(gameplay_rows(run,offers,ui,snapshots))
     case _: D.image(menu_rows(ui,profile))
 
-def scene(+ui: Ui,profile: P.Profile,run: G.Run,offers: List<&2,G.Offer>,snapshots: List<&2,G.Snapshot>) -> Image: scene_screen(ui_screen(ui),ui,profile,run,offers,snapshots)
+def scene(+ui: Ui,profile: P.Profile,run: Model.Run,offers: List<&2,Model.Offer>,snapshots: List<&2,Model.Snapshot>) -> Image: scene_screen(ui_screen(ui),ui,profile,run,offers,snapshots)
 
 def view(state: Native) -> Native & Image:
   match state:
@@ -507,7 +508,7 @@ def fps_overlay(ready: Bool,value: U32,tail: List<&2,D.Rect>) -> List<&2,D.Rect>
   match ready:
     case False{}: D.text("FPS --",438.0,36.0,1.0,15196103,tail)
     case True{}: D.text("FPS " ++ U32.show(value),438.0,36.0,1.0,15196103,tail)
-def scene_fps(screen: U32,+ui: Ui,+profile: P.Profile,run: G.Run,offers: List<&2,G.Offer>,snapshots: List<&2,G.Snapshot>,ready: Bool,value: U32) -> Image:
+def scene_fps(screen: U32,+ui: Ui,+profile: P.Profile,run: Model.Run,offers: List<&2,Model.Offer>,snapshots: List<&2,Model.Snapshot>,ready: Bool,value: U32) -> Image:
   match screen:
     case 1: D.image(fps_overlay(ready,value,gameplay_rows(run,offers,ui,snapshots)))
     case _: D.image(fps_overlay(ready,value,menu_rows(ui,profile)))
@@ -658,9 +659,9 @@ def return_to_menu(allowed: Bool,state: Native) -> Native:
     case True{} Native{game,ui,profile}: Native{game,set_keys(set_screen(set_tab(set_selected(set_page(ui,0),0),2),0),0),profile}
     case False{} state: state
 
-def abandoned_run(run: G.Run) -> G.Run:
+def abandoned_run(run: Model.Run) -> Model.Run:
   match run:
-    case G.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: G.Run{RS.Session{3,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}
+    case Model.Run{RS.Session{phase,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}: Model.Run{RS.Session{3,tick,xp,xpNeed,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}
 def abandon(paused: U32,state: Native) -> Native:
   match paused state:
     case 1 Native{G.Packet{G.State{world,+run,offers,snapshots,pending}},ui,profile}:
@@ -668,7 +669,7 @@ def abandon(paused: U32,state: Native) -> Native:
       Native{G.Packet{G.State{world,terminal,offers,snapshots,pending}},set_dirty(set_recorded(set_keys(set_paused(set_screen(set_tab(set_selected(set_page(ui,0),0),2),0),0),0),1),Pending{}),ProfileIO.record(profile,terminal)}
     case p state: state
 
-def command_play(code: U32,+ui: Ui,run: G.Run,state: Native) -> Native:
+def command_play(code: U32,+ui: Ui,run: Model.Run,state: Native) -> Native:
   match code:
     case 13: return_to_menu(U32.is_le(3,run_phase(run)),state)
     case 113: abandon(ui_paused(ui),state)
@@ -852,7 +853,7 @@ def sound_cue(muted: U32,damaged: Bool,levelled: Bool,killed: Bool) -> U32:
 def session_with_audio(native: Native,kills: U32,level: U32,health: U32,fps: Fps,result: Maybe<Audio> & Sound.Track) -> IO(Maybe<Session>):
   (audio,music) = result
   IO.pure(Maybe<Session>,Some{Session{native,audio,kills,level,health,music,fps}})
-def music_observation(due: Bool,+run: G.Run,enemies: List<&2,Enemy.State>,projectiles: List<&2,Shot.State>,cached: U32) -> U32:
+def music_observation(due: Bool,+run: Model.Run,enemies: List<&2,Enemy.State>,projectiles: List<&2,Shot.State>,cached: U32) -> U32:
   match due:
     case True{}: G.music_danger(run_hp(run),run_maxHp(run),run_px(run),run_py(run),G.projectile_threats(projectiles),EnemyView.pressures(enemies))
     case False{}: cached

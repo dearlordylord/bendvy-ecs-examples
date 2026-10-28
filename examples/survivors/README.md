@@ -56,6 +56,12 @@ performance qualification. See [measurement evidence](../../research/shared-proj
 and the [offscreen birth invariant](spawn-policy/README.md) for narrower results
 and limits.
 
+[`game-observation.bend`](game-observation.bend) owns the immutable run, offer
+and actor observations shared by the simulation and controllers. Preference
+proofs import this data boundary instead of the ECS implementation. All 82
+preference laws remain checked against production functions, with a 10-second
+CPU and wall limit in `check-proofs.sh`.
+
 ## Native launch
 
 Bend handles simulation, drawing, input, menus, audio and profile storage. Native play requires no Node.js or browser. On macOS, install Bend and Apple's Command Line Tools (`xcode-select --install`). The [native toolchain wrapper](../../toolchains/README.md) selects Apple Clang and its SDK automatically. Run from the repository root:

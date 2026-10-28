@@ -1,3 +1,4 @@
+import game-observation.bend as Model
 import Base
 import game.bend as G
 import bot-profile.bend as B
@@ -71,7 +72,7 @@ def tick_closed(closed: Bool,state: Bot) -> IO(Maybe<Bot>):
     case True{}: IO.pure(Maybe<Bot>,None{})
     case False{}: continue(state)
 def tick(events: List<Event>,state: Bot) -> IO(Maybe<Bot>): tick_closed(closes(events),state)
-def rendering_run(+run: G.Run,packet: G.Packet) -> N.Native:
+def rendering_run(+run: Model.Run,packet: G.Packet) -> N.Native:
   N.Native{packet,N.set_character(N.set_paused(N.set_screen(N.initial_ui(),1),(Bool.to_u32(Bool.or(U32.is_eq(G.run_phase(run),1),U32.is_eq(G.run_phase(run),2))) * 2 : U32)),G.run_character(run)),P.fresh()}
 def rendering_native(packet: G.Packet) -> N.Native:
   match packet:

@@ -1,3 +1,4 @@
+import game-observation.bend as Model
 import run-state.bend as RS
 import Base
 import enemy-status-encoder.bend as StatusEncoder
@@ -6,7 +7,6 @@ import enemy-combat.bend as Enemy
 import game-components.bend as Components
 import projectile-state.bend as Shot
 import game-storage.bend as Storage
-import game.bend as G
 import enemy-spatial.bend as Space
 import entity-role.bend as GRole
 import bendvy-ecs-core@0.1.0.2/world.bend as W
@@ -74,9 +74,9 @@ def enemy_status(value: Components.Status) -> String:
 def enemy(value: Enemy.State) -> String:
   match value:
     case Enemy.State{space,archetype,slot,hp,status}: "{\"spatial\":" ++ spatial(space) ++ ",\"archetype\":" ++ U32.show(archetype) ++ ",\"identity\":" ++ U32.show(slot) ++ ",\"vitals\":" ++ vitals(hp) ++ ",\"status\":" ++ enemy_status(status) ++ "}"
-def offer(value: G.Offer) -> String:
+def offer(value: Model.Offer) -> String:
   match value:
-    case G.Offer{kind,id,level}: array([U32.show(kind),U32.show(id),U32.show(level)])
+    case Model.Offer{kind,id,level}: array([U32.show(kind),U32.show(id),U32.show(level)])
 def projectile_side(value: Shot.Side) -> String:
   match value:
     case Shot.PlayerShot{}: "\"player\""
@@ -102,32 +102,32 @@ def pickup(value: Pickup.Payload) -> String:
 def pickup_state(value: Pickup.State) -> String:
   match value:
     case Pickup.State{space,payload,identity}: "{\"spatial\":" ++ spatial(space) ++ ",\"identity\":" ++ U32.show(identity) ++ ",\"payload\":" ++ pickup(payload) ++ "}"
-def snapshot_row(value: G.Snapshot) -> String:
+def snapshot_row(value: Model.Snapshot) -> String:
   match value:
-    case G.ProjectileSnapshot{projectile}: "{\"projectile\":" ++ projectile_state(projectile) ++ "}"
-    case G.EnemySnapshot{value}: "{\"enemy\":" ++ enemy(value) ++ "}"
-    case G.PickupSnapshot{value}: "{\"pickup\":" ++ pickup_state(value) ++ "}"
-def offers_items(rows: List<&2,G.Offer>) -> String:
+    case Model.ProjectileSnapshot{projectile}: "{\"projectile\":" ++ projectile_state(projectile) ++ "}"
+    case Model.EnemySnapshot{value}: "{\"enemy\":" ++ enemy(value) ++ "}"
+    case Model.PickupSnapshot{value}: "{\"pickup\":" ++ pickup_state(value) ++ "}"
+def offers_items(rows: List<&2,Model.Offer>) -> String:
   match rows:
     case []: ""
     case value <> []: offer(value)
     case value <> rest: offer(value) ++ "," ++ offers_items(rest)
-def offers(rows: List<&2,G.Offer>) -> String: "[" ++ offers_items(rows) ++ "]"
-def snapshots_items(rows: List<&2,G.Snapshot>) -> String:
+def offers(rows: List<&2,Model.Offer>) -> String: "[" ++ offers_items(rows) ++ "]"
+def snapshots_items(rows: List<&2,Model.Snapshot>) -> String:
   match rows:
     case []: ""
     case value <> []: snapshot_row(value)
     case value <> rest: snapshot_row(value) ++ "," ++ snapshots_items(rest)
-def snapshots(rows: List<&2,G.Snapshot>) -> String: "[" ++ snapshots_items(rows) ++ "]"
+def snapshots(rows: List<&2,Model.Snapshot>) -> String: "[" ++ snapshots_items(rows) ++ "]"
 def session(value: RS.Session) -> String:
   match value:
     case RS.Session{phase,tick,xp,need,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected}: array([U32.show(phase),U32.show(tick),U32.show(xp),U32.show(need),U32.show(level),U32.show(kills),U32.show(gold),U32.show(seed),U32.show(stage),U32.show(bosses),U32.show(mode),u32s(enemyKinds),U32.show(relicCollected)])
 def player_state(value: RS.PlayerState) -> String:
   match value:
     case RS.PlayerState{px,py,hp,maximum,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}: array([fbits(px),fbits(py),U32.show(hp),U32.show(maximum),U32.show(character),u32s(weapons),u32s(passives),U32.show(invuln),U32.show(arcana),U32.show(meta),U32.show(revivals),U32.show(rerolls),U32.show(banishes),U32.show(skips),U32.show(bannedWeapons),U32.show(bannedPassives)])
-def run(value: G.Run) -> String:
+def run(value: Model.Run) -> String:
   match value:
-    case G.Run{shared,personal}: array([session(shared),player_state(personal)])
+    case Model.Run{shared,personal}: array([session(shared),player_state(personal)])
 def shot_payload(value: Components.ShotPayload) -> String:
   match value:
     case Components.ShotPayload{weapon,damage,active}: array([U32.show(weapon),U32.show(damage),U32.show(Bool.to_u32(active))])
@@ -368,7 +368,7 @@ def memory(value:Policy.Memory) -> String:
   match value:
     case Policy.Memory{current,lastPlan,lastHp,anchor,stuckSince,initialized,objectKeys,candidates}: array([optional(~Policy.Choice,~choice,current),U32.show(lastPlan),U32.show(lastHp),point(anchor),U32.show(stuckSince),U32.show(Bool.to_u32(initialized)),listed(~Policy.Goal,~goal,objectKeys),listed(~Policy.Choice,~choice,candidates)])
 type Capture is Type: Captured{state:Core.CoreState,text:String} Unobservable{state:Core.CoreState}
-def snapshot_done(+shared:RS.Session,+refs:List<&2,Core.PlayerRef>,+shots:List<&2,G.Snapshot>,+round:U32,+required:List<&2,U32>,+off:List<&2,Core.PlayerOffers>,+pending:List<&2,Core.Reward>,result:Storage.World() & Maybe<&2,String>) -> Capture:
+def snapshot_done(+shared:RS.Session,+refs:List<&2,Core.PlayerRef>,+shots:List<&2,Model.Snapshot>,+round:U32,+required:List<&2,U32>,+off:List<&2,Core.PlayerOffers>,+pending:List<&2,Core.Reward>,result:Storage.World() & Maybe<&2,String>) -> Capture:
   match result:
     case (world,None{}): Unobservable{Core.CoreState{world,shared,refs,shots,round,required,off,pending}}
     case (world,Some{text}): Captured{Core.CoreState{world,shared,refs,shots,round,required,off,pending},"{\"world\":" ++ text ++ ",\"shared\":" ++ session(shared) ++ ",\"refs\":" ++ listed(~Core.PlayerRef,~player_ref,refs) ++ ",\"snapshots\":" ++ snapshots(shots) ++ ",\"round\":" ++ U32.show(round) ++ ",\"required\":" ++ u32s(required) ++ ",\"offers\":" ++ listed(~Core.PlayerOffers,~player_offers,off) ++ ",\"pending\":" ++ listed(~Core.Reward,~reward,pending) ++ "}"}

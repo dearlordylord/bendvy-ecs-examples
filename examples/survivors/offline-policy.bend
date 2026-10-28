@@ -2,7 +2,7 @@ import pickup-state.bend as Pickup
 import run-state.bend as RS
 import Base
 import game-components.bend as Components
-import game.bend as G
+import game-observation.bend as G
 import enemy-combat.bend as Enemy
 import enemy-spatial.bend as Space
 import offline-threats.bend as Threats

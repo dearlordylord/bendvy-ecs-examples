@@ -1,5 +1,5 @@
 import Base
-import game.bend as G
+import game-observation.bend as G
 import offline-policy.bend as P
 import offline-policy/preference.bend as Nav
 import offline-threats.bend as T

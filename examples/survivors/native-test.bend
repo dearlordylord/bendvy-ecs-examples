@@ -1,3 +1,4 @@
+import game-observation.bend as Model
 import pickup-state.bend as Pickup
 import enemy-spatial.bend as Space
 import native_draw.bend as D
@@ -10,8 +11,8 @@ import native-profile.bend as ProfileIO
 import game.bend as G
 import native-capture.bend as Capture
 
-type Observation is Data: Observation{run: G.Run,ui: N.Ui,profile: P.Profile}
-def run(observation: Observation) -> G.Run:
+type Observation is Data: Observation{run: Model.Run,ui: N.Ui,profile: P.Profile}
+def run(observation: Observation) -> Model.Run:
   match observation:
     case Observation{run,_,_}: run
 def ui(observation: Observation) -> N.Ui:
@@ -51,17 +52,17 @@ def busy(fuel: Nat,state: N.Native) -> N.Native:
     case 0n: state
     case 1n+p: busy(p,busy_step(state))
 def release(code: U32,state: N.Native) -> N.Native: N.reduce([Key{code,False{}}],state)
-def phase_run(run: G.Run,+newPhase: U32,+newGold: U32) -> G.Run:
+def phase_run(run: Model.Run,+newPhase: U32,+newGold: U32) -> Model.Run:
   match run:
-    case G.Run{RS.Session{+phase,+tick,+xp,+need,+level,+kills,+gold,+seed,+stage,+bosses,+mode,+enemyKinds,+relicCollected},RS.PlayerState{+px,+py,+hp,+maxHp,+character,+weapons,+passives,+invuln,+arcana,+meta,+revivals,+rerolls,+banishes,+skips,+bannedWeapons,+bannedPassives}}: G.Run{RS.Session{newPhase,tick,xp,need,level,kills,newGold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}
+    case Model.Run{RS.Session{+phase,+tick,+xp,+need,+level,+kills,+gold,+seed,+stage,+bosses,+mode,+enemyKinds,+relicCollected},RS.PlayerState{+px,+py,+hp,+maxHp,+character,+weapons,+passives,+invuln,+arcana,+meta,+revivals,+rerolls,+banishes,+skips,+bannedWeapons,+bannedPassives}}: Model.Run{RS.Session{newPhase,tick,xp,need,level,kills,newGold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}
 def boundary(state: N.Native,phase: U32,gold: U32) -> N.Native:
   match state:
     case N.Native{G.Packet{G.State{world,+run,_,snapshots,_}},ui,profile}:
-      N.Native{G.Packet{G.State{world,phase_run(run,phase,gold),[G.Offer{0,0,(G.at(N.run_weapons(run),0) + 1 : U32)},G.Offer{1,0,1},G.Offer{0,1,1}],snapshots,[]}},N.set_paused(ui,0),profile}
+      N.Native{G.Packet{G.State{world,phase_run(run,phase,gold),[Model.Offer{0,0,(G.at(N.run_weapons(run),0) + 1 : U32)},Model.Offer{1,0,1},Model.Offer{0,1,1}],snapshots,[]}},N.set_paused(ui,0),profile}
     case state: state
-def paid_run(run: G.Run) -> G.Run:
+def paid_run(run: Model.Run) -> Model.Run:
   match run:
-    case G.Run{RS.Session{+phase,+tick,_,+need,+level,+kills,+gold,+seed,+stage,+bosses,+mode,+enemyKinds,+relicCollected},RS.PlayerState{+px,+py,+hp,+maxHp,+character,+weapons,+passives,+invuln,+arcana,+meta,+revivals,+rerolls,+banishes,+skips,+bannedWeapons,+bannedPassives}}: G.Run{RS.Session{0,tick,need,need,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}
+    case Model.Run{RS.Session{+phase,+tick,_,+need,+level,+kills,+gold,+seed,+stage,+bosses,+mode,+enemyKinds,+relicCollected},RS.PlayerState{+px,+py,+hp,+maxHp,+character,+weapons,+passives,+invuln,+arcana,+meta,+revivals,+rerolls,+banishes,+skips,+bannedWeapons,+bannedPassives}}: Model.Run{RS.Session{0,tick,need,need,level,kills,gold,seed,stage,bosses,mode,enemyKinds,relicCollected},RS.PlayerState{px,py,hp,maxHp,character,weapons,passives,invuln,arcana,meta,revivals,rerolls,banishes,skips,bannedWeapons,bannedPassives}}
 def earned_panel_test(state: N.Native) -> IO(Unit):
   match state:
     case N.Native{G.Packet{G.State{world,r,offers,snapshots,pending}},u,p}:
@@ -125,9 +126,9 @@ def quit_result(result: Maybe<N.Native>) -> IO(Unit):
   match result:
     case None{}: IO.print("PASS Close event exits")
     case Some{_}: IO.die(Unit,1,"FAIL Close event exits")
-def map_pickup(identity: U32,item: Pickup.Item,active: Bool,x: F32,y: F32) -> G.Snapshot:
-  G.PickupSnapshot{Pickup.State{Space.Spatial{x,y,0,6.0},Pickup.Payload{item,1,active},identity}}
-def map_fixtures() -> List<&2,G.Snapshot>:
+def map_pickup(identity: U32,item: Pickup.Item,active: Bool,x: F32,y: F32) -> Model.Snapshot:
+  Model.PickupSnapshot{Pickup.State{Space.Spatial{x,y,0,6.0},Pickup.Payload{item,1,active},identity}}
+def map_fixtures() -> List<&2,Model.Snapshot>:
   [map_pickup(100,Pickup.Chest{},True{},3600.0,5400.0),map_pickup(511,Pickup.Relic{0},True{},10800.0,9000.0),map_pickup(200,Pickup.Chest{},False{},1800.0,1800.0),map_pickup(1056,Pickup.Xp{7,False{}},True{},5400.0,1800.0)]
 def map_rect(rows: List<&2,D.Rect>,+expectedX: F32,+expectedY: F32,+expectedColor: U32) -> Bool:
   match rows:

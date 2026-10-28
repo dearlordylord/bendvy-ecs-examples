@@ -1,7 +1,7 @@
 import Base
 import ./preference.bend as Nav
 import ../offline-policy.bend as P
-import ../game.bend as G
+import ../game-observation.bend as G
 import ../stream-bot.bend as Bot
 import ../offline-threats.bend as T
 import ../projectile-state.bend as Shot

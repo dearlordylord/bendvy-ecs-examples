@@ -1,3 +1,4 @@
+import game-observation.bend as Model
 import run-state.bend as RS
 import enemy-combat.bend as Enemy
 import enemy-spatial.bend as Space
@@ -7,17 +8,16 @@ import pickup-state.bend as Pickup
 import Base
 import game-components.bend as Components
 import game-storage.bend as Storage
-import game.bend as G
 import coop-core.bend as Core
 import native-economy.bend as Economy
 import offline-policy.bend as Policy
 import offline-coop-control.bend as Control
 
-type Observed is Type: Observed{state:Core.CoreState,shared:RS.Session,p0:G.Run,p1:G.Run,snapshots:List<&2,G.Snapshot>,round:U32,required:List<&2,U32>,offers:List<&2,Core.PlayerOffers>}
+type Observed is Type: Observed{state:Core.CoreState,shared:RS.Session,p0:Model.Run,p1:Model.Run,snapshots:List<&2,Model.Snapshot>,round:U32,required:List<&2,U32>,offers:List<&2,Core.PlayerOffers>}
 type Checked is Type: CoopReady{observed:Array<Observed>} CoopBroken{message:String}
 type Action is Data: CoopMove{tick:U32,dx0:F32,dy0:F32,dx1:F32,dy1:F32} CoopChoose{tick:U32,player:U32,round:U32,index:U32}
 type Progress is Type: Progress{packet:Core.CorePacket,m0:Policy.Memory,m1:Policy.Memory,choices0:U32,choices1:U32,action:Maybe<&2,Action>}
-type Decision is Type: Decision{state:Core.CoreState,p0:G.Run,p1:G.Run,snapshots:List<&2,G.Snapshot>,round:U32,offers:List<&2,Core.PlayerOffers>,m0:Policy.Memory,m1:Policy.Memory,choices0:U32,choices1:U32,tick:U32}
+type Decision is Type: Decision{state:Core.CoreState,p0:Model.Run,p1:Model.Run,snapshots:List<&2,Model.Snapshot>,round:U32,offers:List<&2,Core.PlayerOffers>,m0:Policy.Memory,m1:Policy.Memory,choices0:U32,choices1:U32,tick:U32}
 type Work is Type: Work{observed:Array<Observed>,m0:Policy.Memory,m1:Policy.Memory,choices0:U32,choices1:U32}
 type Instruction is Type:
   Again{line:Maybe<&2,String>,nextSample:Nat,progress:Array<Progress>}
@@ -55,11 +55,11 @@ def configure(packet:Core.CorePacket,arcana:U32) -> Core.CorePacket:
 def start(seed:U32,+advanced:Bool,character0:U32,character1:U32,arcana0:U32,arcana1:U32) -> Core.CorePacket:
   unlock_profile(advanced,join(configure(Core.core_start(character0,profile_meta(advanced),seed),arcana0),character1,profile_meta(advanced),arcana1))
 
-def observed_players(state: Core.CoreState,+shared: RS.Session,snapshots: List<&2,G.Snapshot>,round: U32,required: List<&2,U32>,offers: List<&2,Core.PlayerOffers>,p0: Maybe<&2,RS.PlayerState>,p1: Maybe<&2,RS.PlayerState>) -> Checked:
+def observed_players(state: Core.CoreState,+shared: RS.Session,snapshots: List<&2,Model.Snapshot>,round: U32,required: List<&2,U32>,offers: List<&2,Core.PlayerOffers>,p0: Maybe<&2,RS.PlayerState>,p1: Maybe<&2,RS.PlayerState>) -> Checked:
   match p0 p1:
     case Some{p0} Some{p1}: CoopReady{ALeaf{Observed{state,shared,Core.player_step_context(shared,p0),Core.player_step_context(shared,p1),snapshots,round,required,offers}}}
     case _ _: CoopBroken{"native co-op requires both player records"}
-def observed_loaded(+shared:RS.Session,+refs:List<&2,Core.PlayerRef>,+snapshots:List<&2,G.Snapshot>,+round:U32,+required:List<&2,U32>,+offers:List<&2,Core.PlayerOffers>,pending:List<&2,Core.Reward>,result:Storage.World() & List<&2,Components.PlayerRecord>) -> Checked:
+def observed_loaded(+shared:RS.Session,+refs:List<&2,Core.PlayerRef>,+snapshots:List<&2,Model.Snapshot>,+round:U32,+required:List<&2,U32>,+offers:List<&2,Core.PlayerOffers>,pending:List<&2,Core.Reward>,result:Storage.World() & List<&2,Components.PlayerRecord>) -> Checked:
   match result:
     case (world,+players): observed_players(Core.CoreState{world,shared,refs,snapshots,round,required,offers,pending},shared,snapshots,round,required,offers,Core.find_player(players,0),Core.find_player(players,1))
 def observe(packet:Core.CorePacket) -> Checked:
@@ -102,7 +102,7 @@ def chosen(active:Bool,+id:U32,+index:U32,value:Array<Decision>) -> Array<Progre
 def choosing(active:Bool,+id:U32,value:Array<Decision>) -> Array<Progress>:
   match value:
     case ALeaf{Decision{state,+p0,+p1,rows,round,+offers,m0,m1,choices0,choices1,tick}}:
-      chosen(active,id,Policy.upgrade(Bool.pick(G.Run,U32.is_eq(id,0),p0,p1),Core.offers_for(offers,id)),ALeaf{Decision{state,p0,p1,rows,round,offers,m0,m1,choices0,choices1,tick}})
+      chosen(active,id,Policy.upgrade(Bool.pick(Model.Run,U32.is_eq(id,0),p0,p1),Core.offers_for(offers,id)),ALeaf{Decision{state,p0,p1,rows,round,offers,m0,m1,choices0,choices1,tick}})
     case _: failed("native co-op decision carrier must be one leaf")
 def decide(active:Bool,required:List<&2,U32>,value:Array<Decision>) -> Array<Progress>:
   match required:
@@ -111,20 +111,20 @@ def decide(active:Bool,required:List<&2,U32>,value:Array<Decision>) -> Array<Pro
 
 def initial(seed:U32,advanced:Bool,character0:U32,character1:U32,arcana0:U32,arcana1:U32) -> Array<Progress>:
   ALeaf{Progress{start(seed,advanced,character0,character1,arcana0,arcana1),Policy.initial(),Policy.initial(),0,0,None{}}}
-def population_go(rows:List<&2,G.Snapshot>,+boss:U32,+ordinary:U32) -> U32 & U32:
+def population_go(rows:List<&2,Model.Snapshot>,+boss:U32,+ordinary:U32) -> U32 & U32:
   match rows:
     case []: (ordinary,boss)
-    case G.EnemySnapshot{Enemy.State{_,+variant,_,Components.Vitals{+hp,_},_}} <> tail: population_go(tail,(boss + Bool.to_u32(Control.boss(0,variant,hp)) : U32),(ordinary + Bool.to_u32(Control.ordinary(0,variant,hp)) : U32))
+    case Model.EnemySnapshot{Enemy.State{_,+variant,_,Components.Vitals{+hp,_},_}} <> tail: population_go(tail,(boss + Bool.to_u32(Control.boss(0,variant,hp)) : U32),(ordinary + Bool.to_u32(Control.ordinary(0,variant,hp)) : U32))
     case _ <> tail: population_go(tail,boss,ordinary)
-def near_go(rows:List<&2,G.Snapshot>,+px:F32,+py:F32,+count:U32) -> U32:
+def near_go(rows:List<&2,Model.Snapshot>,+px:F32,+py:F32,+count:U32) -> U32:
   match rows:
     case []: count
-    case G.EnemySnapshot{Enemy.State{Space.Spatial{+x,+y,_,_},_,_,Components.Vitals{hp,_},_}} <> tail: near_go(tail,px,py,(count + Bool.to_u32(Bool.and(U32.is_lt(0,hp),F32.is_le(((x - px) * (x - px) + (y - py) * (y - py) : F32),14400.0))) : U32))
+    case Model.EnemySnapshot{Enemy.State{Space.Spatial{+x,+y,_,_},_,_,Components.Vitals{hp,_},_}} <> tail: near_go(tail,px,py,(count + Bool.to_u32(Bool.and(U32.is_lt(0,hp),F32.is_le(((x - px) * (x - px) + (y - py) * (y - py) : F32),14400.0))) : U32))
     case _ <> tail: near_go(tail,px,py,count)
-def xp_go(rows:List<&2,G.Snapshot>,+piles:U32,+value:U32) -> U32 & U32:
+def xp_go(rows:List<&2,Model.Snapshot>,+piles:U32,+value:U32) -> U32 & U32:
   match rows:
     case []: (piles,value)
-    case G.PickupSnapshot{Pickup.State{_,Pickup.Payload{Pickup.Xp{amount,_},_,True{}},_}} <> tail: xp_go(tail,(piles + 1 : U32),(value + amount : U32))
+    case Model.PickupSnapshot{Pickup.State{_,Pickup.Payload{Pickup.Xp{amount,_},_,True{}},_}} <> tail: xp_go(tail,(piles + 1 : U32),(value + amount : U32))
     case _ <> tail: xp_go(tail,piles,value)
 def population_fields(pair:U32 & U32) -> String:
   (+ordinary,+boss) = pair
@@ -137,9 +137,9 @@ def u32_items(values:List<&2,U32>) -> String:
     case []: ""
     case value <> []: U32.show(value)
     case value <> tail: U32.show(value) ++ "," ++ u32_items(tail)
-def player_setup(+run:G.Run) -> String:
+def player_setup(+run:Model.Run) -> String:
   "{\"character\":" ++ U32.show(Core.run_character(run)) ++ ",\"arcana\":" ++ U32.show(Core.run_arcana(run)) ++ ",\"meta\":" ++ U32.show(Core.run_meta(run)) ++ ",\"bannedWeapons\":" ++ U32.show(Core.run_bannedWeapons(run)) ++ ",\"weapons\":[" ++ u32_items(Core.run_weapons(run)) ++ "],\"passives\":[" ++ u32_items(Core.run_passives(run)) ++ "],\"hp\":" ++ U32.show(Core.run_hp(run)) ++ ",\"maxHp\":" ++ U32.show(Core.run_maxHp(run)) ++ "}"
-def initial_setup_fields(initial:Bool,+shared:RS.Session,p0:G.Run,p1:G.Run) -> String:
+def initial_setup_fields(initial:Bool,+shared:RS.Session,p0:Model.Run,p1:Model.Run) -> String:
   match initial:
     case False{}: ""
     case True{}: ",\"initialSetup\":{\"stage\":" ++ U32.show(RS.session_stage(shared)) ++ ",\"mode\":" ++ U32.show(RS.session_mode(shared)) ++ ",\"players\":[" ++ player_setup(p0) ++ "," ++ player_setup(p1) ++ "]}"
@@ -149,7 +149,7 @@ def shared_kills(shared: RS.Session) -> U32:
 def shared_gold(shared: RS.Session) -> U32:
   match shared:
     case RS.Session{_,_,_,_,_,_,gold,_,_,_,_,_,_}: gold
-def fields(+seed:U32,+index:U32,+ticks:U32,+shared:RS.Session,+p0:G.Run,+p1:G.Run,+snapshots:List<&2,G.Snapshot>,choices0:U32,choices1:U32) -> String:
+def fields(+seed:U32,+index:U32,+ticks:U32,+shared:RS.Session,+p0:Model.Run,+p1:Model.Run,+snapshots:List<&2,Model.Snapshot>,choices0:U32,choices1:U32) -> String:
   "\"seed\":" ++ U32.show(seed) ++ ",\"index\":" ++ U32.show(index) ++ ",\"tick\":" ++ U32.show(RS.session_tick(shared)) ++ ",\"phase\":" ++ U32.show(RS.session_phase(shared)) ++ ",\"requestedTicks\":" ++ U32.show(ticks) ++ "," ++ population_fields(population_go(snapshots,0,0)) ++ ",\"hp0\":" ++ U32.show(Core.run_hp(p0)) ++ ",\"hp1\":" ++ U32.show(Core.run_hp(p1)) ++ ",\"maxHp0\":" ++ U32.show(Core.run_maxHp(p0)) ++ ",\"maxHp1\":" ++ U32.show(Core.run_maxHp(p1)) ++ ",\"px0\":" ++ F32.show(Core.run_px(p0)) ++ ",\"py0\":" ++ F32.show(Core.run_py(p0)) ++ ",\"px1\":" ++ F32.show(Core.run_px(p1)) ++ ",\"py1\":" ++ F32.show(Core.run_py(p1)) ++ ",\"nearEnemies0\":" ++ U32.show(near_go(snapshots,Core.run_px(p0),Core.run_py(p0),0)) ++ ",\"nearEnemies1\":" ++ U32.show(near_go(snapshots,Core.run_px(p1),Core.run_py(p1),0)) ++ ",\"xp\":" ++ U32.show(RS.session_xp(shared)) ++ ",\"xpNeed\":" ++ U32.show(RS.session_xpNeed(shared)) ++ ",\"level\":" ++ U32.show(RS.session_level(shared)) ++ ",\"kills\":" ++ U32.show(shared_kills(shared)) ++ ",\"gold\":" ++ U32.show(shared_gold(shared)) ++ ",\"choices0\":" ++ U32.show(choices0) ++ ",\"choices1\":" ++ U32.show(choices1) ++ xp_fields(xp_go(snapshots,0,0)) ++ initial_setup_fields(U32.is_eq(RS.session_tick(shared),0),shared,p0,p1)
 
 

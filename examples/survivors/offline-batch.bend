@@ -1,3 +1,4 @@
+import game-observation.bend as Model
 import pickup-state.bend as Pickup
 import run-state.bend as RS
 # Native, unpaced simulation. No browser, Node, classifier, or frame parsing.
@@ -30,27 +31,27 @@ def start(+profile: U32,+seed: U32) -> G.Packet:
   match profile:
     case 1: B.advanced_start_seed(seed)
     case _: B.fresh_start_seed(seed)
-def tick(+run: G.Run) -> U32:
+def tick(+run: Model.Run) -> U32:
   match run:
-    case G.Run{RS.Session{_,value,_,_,_,_,_,_,_,_,_,_,_},RS.PlayerState{_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_}}: value
+    case Model.Run{RS.Session{_,value,_,_,_,_,_,_,_,_,_,_,_},RS.PlayerState{_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_}}: value
 def outcome(terminal: Bool) -> String:
   match terminal:
     case True{}: "terminal"
     case False{}: "bounded-observation"
-def phase(+run: G.Run) -> U32: G.run_phase(run)
-def piles(rows: List<&2,G.Snapshot>) -> U32:
+def phase(+run: Model.Run) -> U32: G.run_phase(run)
+def piles(rows: List<&2,Model.Snapshot>) -> U32:
   match rows:
     case []: 0
-    case G.PickupSnapshot{Pickup.State{_,Pickup.Payload{Pickup.Xp{_,_},_,True{}},_}} <> rest: (1 + piles(rest) : U32)
+    case Model.PickupSnapshot{Pickup.State{_,Pickup.Payload{Pickup.Xp{_,_},_,True{}},_}} <> rest: (1 + piles(rest) : U32)
     case _ <> rest: piles(rest)
-def xp_sum(rows: List<&2,G.Snapshot>) -> U32:
+def xp_sum(rows: List<&2,Model.Snapshot>) -> U32:
   match rows:
     case []: 0
-    case G.PickupSnapshot{Pickup.State{_,Pickup.Payload{Pickup.Xp{amount,_},_,True{}},_}} <> rest: (amount + xp_sum(rest) : U32)
+    case Model.PickupSnapshot{Pickup.State{_,Pickup.Payload{Pickup.Xp{amount,_},_,True{}},_}} <> rest: (amount + xp_sum(rest) : U32)
     case _ <> rest: xp_sum(rest)
-def report(+index: U32,+seed: U32,+profile: U32,+choices: U32,+started: Nat,+ticks: U32,+run: G.Run,+rows: List<&2,G.Snapshot>) -> IO(Unit):
+def report(+index: U32,+seed: U32,+profile: U32,+choices: U32,+started: Nat,+ticks: U32,+run: Model.Run,+rows: List<&2,Model.Snapshot>) -> IO(Unit):
   match run:
-    case G.Run{RS.Session{+phase,+tick,xp,xpNeed,level,kills,gold,_,_,_,_,_,_},RS.PlayerState{_,_,hp,_,_,_,_,_,_,_,_,_,_,_,_,_}}:
+    case Model.Run{RS.Session{+phase,+tick,xp,xpNeed,level,kills,gold,_,_,_,_,_,_},RS.PlayerState{_,_,hp,_,_,_,_,_,_,_,_,_,_,_,_,_}}:
       do IO<Unit>:
         now : Nat <- IO.now()
         IO.print("{\"type\":\"summary\",\"backend\":\"native\",\"policy\":\"bend-resource-memory-v1\",\"index\":" ++ U32.show(index) ++ ",\"seed\":" ++ U32.show(seed) ++ ",\"profile\":\"" ++ profile_name(profile) ++ "\",\"status\":\"completed\",\"tick\":" ++ U32.show(tick) ++ ",\"requestedTicks\":" ++ U32.show(ticks) ++ ",\"outcome\":\"" ++ outcome(U32.is_le(3,phase)) ++ "\",\"phase\":" ++ U32.show(phase) ++ ",\"hp\":" ++ U32.show(hp) ++ ",\"level\":" ++ U32.show(level) ++ ",\"xp\":" ++ U32.show(xp) ++ ",\"xpNeed\":" ++ U32.show(xpNeed) ++ ",\"kills\":" ++ U32.show(kills) ++ ",\"gold\":" ++ U32.show(gold) ++ ",\"choices\":" ++ U32.show(choices) ++ ",\"xpPiles\":" ++ U32.show(piles(rows)) ++ ",\"uncollectedBaseXp\":" ++ U32.show(xp_sum(rows)) ++ ",\"wallMs\":" ++ Nat.show(Nat.sub(now,started)) ++ "}")

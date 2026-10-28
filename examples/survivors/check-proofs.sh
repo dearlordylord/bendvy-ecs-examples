@@ -17,14 +17,18 @@ if [[ -z "$proof_files" ]]; then
 fi
 proof_count=0
 while IFS= read -r proof; do
-  printf 'Checking Bend proof: %s (CPU limit 60s, wall limit 60s)\n' "$proof"
-  if "$timeout_command" --kill-after=5s 60s "${example_cpu[@]}" bash -c 'ulimit -t 60 && exec "$@"' bend-proof "$BEND" "$proof" --verdict; then
+  proof_limit=60
+  if [[ "$proof" == examples/survivors/offline-policy/preference-PROOF.bend ]]; then
+    proof_limit=10
+  fi
+  printf 'Checking Bend proof: %s (CPU limit %ss, wall limit %ss)\n' "$proof" "$proof_limit" "$proof_limit"
+  if "$timeout_command" --kill-after=5s "${proof_limit}s" "${example_cpu[@]}" bash -c 'ulimit -t "$1" && shift && exec "$@"' bend-proof "$proof_limit" "$BEND" "$proof" --verdict; then
     proof_count=$((proof_count + 1))
   else
     status=$?
     printf 'Bend proof command failed: %s (exit %s)\n' "$proof" "$status" >&2
     if [[ "$status" == 124 ]]; then
-      echo 'Proof check exceeded the 60-second wall limit.' >&2
+      printf 'Proof check exceeded the %s-second wall limit.\n' "$proof_limit" >&2
     fi
     exit "$status"
   fi

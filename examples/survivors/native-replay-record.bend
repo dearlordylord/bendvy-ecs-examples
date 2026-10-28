@@ -1,3 +1,4 @@
+import game-observation.bend as Model
 import Base
 import game-components.bend as Components
 import game.bend as G
@@ -22,14 +23,14 @@ def checkpoint(enabled: Bool,state: G.State,+fixture: String,+step: U32,use: G.S
   match enabled:
     case True{}: checkpoint_result(O.snapshot(state),fixture,step,use)
     case False{}: use(state)
-def recorded_direction(direction: F32 & F32,memory: Policy.Memory,state: G.State,+run: G.Run) -> Recorded:
+def recorded_direction(direction: F32 & F32,memory: Policy.Memory,state: G.State,+run: Model.Run) -> Recorded:
   (+dx,+dy)=direction
   +action : F.Action = F.ReplayMove{C.tick(run),G.run_phase(run),F.float_bits(dx),F.float_bits(dy)}
   Recorded{memory,C.apply(action,state),action}
-def recorded_move(result: Policy.Memory & (F32 & F32),state: G.State,run: G.Run) -> Recorded:
+def recorded_move(result: Policy.Memory & (F32 & F32),state: G.State,run: Model.Run) -> Recorded:
   (memory,direction)=result
   recorded_direction(direction,memory,state,run)
-def next(phase: U32,state: G.State,+run: G.Run,+offers: List<&2,G.Offer>,memory: Policy.Memory,snapshots: List<&2,G.Snapshot>) -> Recorded:
+def next(phase: U32,state: G.State,+run: Model.Run,+offers: List<&2,Model.Offer>,memory: Policy.Memory,snapshots: List<&2,Model.Snapshot>) -> Recorded:
   match phase:
     case 1:
       +action : F.Action = F.ReplayUpgrade{C.tick(run),1,Policy.upgrade(run,offers)}
