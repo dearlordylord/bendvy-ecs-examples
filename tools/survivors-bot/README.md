@@ -103,3 +103,30 @@ This integration does not establish the 100× performance target.
 
 `balance-report.py` is an offline report analyzer, not a game runner. Performance
 qualification continues separately in GitHub issue #11.
+
+## Check co-op transport reliability
+
+Build and serve Survivors with the commands in the
+[Survivors README](../../examples/survivors/README.md#browser-launch). Run the browser
+check against that exact artifact:
+
+```sh
+COOP_URL=http://127.0.0.1:8713/coop.html bash tools/survivors-bot/check-coop-reliability.sh
+```
+
+The wrapper holds the shared backend-check lock. Run other browser checks after
+it finishes. Parallel compilation or game sessions can disrupt browser scheduling
+and invalidate a latency comparison.
+
+The check reloads the guest during active gameplay and rejoins its reserved seat.
+It then measures the original 32-second controls with seed 1729, 300 ms observation
+delay, and native send delays of 0, 200, and 600 ms. Reconnect precedes measurement
+because this combat trajectory can legitimately end in defeat before 32 seconds.
+The latency, motion, input, and resource thresholds remain unchanged. The 600 ms
+case checks bounded overload and makes no playability claim.
+
+Artifacts default to `/tmp/coop-transport-qualification`. Set `COOP_QA_DIR` to keep
+separate runs. `COOP_SOURCE_ARTIFACT_DIR` selects the expected served directory;
+its default is `examples/survivors/dist/web`. The checker compares every served
+file with that directory before and after each case. Compare baseline and
+candidate builds with the same checker, inputs, thresholds, and workload conditions.

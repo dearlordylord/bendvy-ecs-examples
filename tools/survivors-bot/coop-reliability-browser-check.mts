@@ -190,7 +190,7 @@ async function instrument(page: Page, role: Role, delay: number, errors: string[
       Transport.prototype.send=async function(bytes,...args){
         ${role === "guest" && delay > 0 ? `await new Promise(resolve=>setTimeout(resolve,${delay}));` : ""}
         const start=Date.now();try{return await qualificationSend.call(this,bytes,...args);}
-        finally{globalThis.__transportQualification.nativeSends.push({start,end:Date.now(),byteLength:bytes.byteLength,confirmDelivery:!!args[0]});}
+        finally{globalThis.__transportQualification.nativeSends.push({start,end:Date.now(),byteLength:bytes.byteLength,confirmDelivery:args[0]===true});}
       };
     `
     })
@@ -258,6 +258,39 @@ try {
       for (const page of [host, guest])
         await page.waitForFunction(() => (globalThis.__transportQualification.lastFrame?.tick ?? 0) > 0, null, {
           timeout: 90000
+        })
+      const beforeReconnect = defined(await host.evaluate(() => globalThis.__transportQualification.lastFrame))
+      assert.equal(beforeReconnect.phase, 0, "reserved-seat reconnect starts during active gameplay")
+      const beforeReload = beforeReconnect.tick
+      const reserved = guest.url()
+      await guest.reload()
+      await host.waitForFunction(
+        () => document.querySelector("#coop-play-status")?.textContent.includes("paused"),
+        null,
+        { timeout: 15000 }
+      )
+      await join(guest)
+      await guest.waitForFunction(
+        (tick) => (globalThis.__transportQualification.lastFrame?.tick ?? 0) >= tick,
+        beforeReload,
+        { timeout: 90000 }
+      )
+      await host.waitForFunction(
+        () =>
+          document.querySelectorAll('#coop-party-roster [data-ready="true"]').length === 2 &&
+          document.querySelector("#coop-play-status")?.textContent === "",
+        null,
+        { timeout: 15000 }
+      )
+      const rejoined = await guest.evaluate(() => globalThis.__transportQualification.lastFrame)
+      assert.equal(defined(rejoined).runId, beforeReconnect.runId, "reconnect restores the same active run")
+      for (const page of [host, guest])
+        await page.evaluate(() => {
+          const trace = globalThis.__transportQualification
+          trace.inputResolutions.length = 0
+          trace.renders.length = 0
+          trace.nativeSends.length = 0
+          trace.transportStates.length = 0
         })
       console.log(JSON.stringify({ delay, stage: "running" }))
       const start = Date.now()
@@ -367,21 +400,7 @@ try {
         )
       }
       assert.ok((hostTrace.lastFrame?.tick ?? 0) > 100 && (guestTrace.lastFrame?.tick ?? 0) > 100, "both roles advance")
-      const beforeReload = defined(hostTrace.lastFrame).tick
-      const reserved = guest.url()
-      await guest.reload()
-      await host.waitForFunction(
-        () => document.querySelector("#coop-play-status")?.textContent.includes("paused"),
-        null,
-        { timeout: 15000 }
-      )
-      await join(guest)
-      await guest.waitForFunction(
-        (tick) => (globalThis.__transportQualification.lastFrame?.tick ?? 0) >= tick,
-        beforeReload,
-        { timeout: 90000 }
-      )
-      assert.equal(guest.url(), reserved, "reconnect preserves reserved-seat invitation")
+      assert.ok(guest.url() === reserved, "reconnect preserves reserved-seat invitation")
       assert.deepEqual(await source(), expectedHashes, "served artifact remains identical after scenario")
       const summary = {
         delay,
@@ -396,7 +415,7 @@ try {
         host: hostTrace,
         guest: guestTrace,
         beforeReload,
-        rejoined: await guest.evaluate(() => globalThis.__transportQualification.lastFrame),
+        rejoined,
         sourceHashes: expectedHashes,
         unavailableMetrics: [
           "snapshot application receipt latency and input rejection counts are not collected by this harness"
