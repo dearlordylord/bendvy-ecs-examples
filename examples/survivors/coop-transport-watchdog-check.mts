@@ -23,8 +23,8 @@ interface Probe {
 }
 declare global {
   var watchdogProbe: Probe
-  var retryFacade: typeof FacadeModule
-  var retryNative: { default(): Promise<unknown>; Transport: Pick<TransportIO, "create"> }
+  var retryFacade: typeof FacadeModule | undefined
+  var retryNative: { default(): Promise<unknown>; Transport: Pick<TransportIO, "create"> } | undefined
 }
 const target = process.argv[2]
 const binary = process.argv[3] ?? "/tmp/bendvy-iroh-cargo-target/debug/iroh-native-probe"
@@ -189,9 +189,11 @@ try {
     content:
       'import * as facade from "./coop-transport.mjs"; import * as native from "./iroh/iroh_transport.js"; globalThis.retryFacade = facade; globalThis.retryNative = native;'
   })
+  await page.waitForFunction(() => retryFacade !== undefined && retryNative !== undefined)
   const timeoutRetry = await page.evaluate(async () => {
     const facade = retryFacade,
       native = retryNative
+    if (!facade || !native) throw Error("Missing transport modules")
     await native.default()
     const events: TransportEvent[] = []
     const guestEvents: NativeEvent[] = []
