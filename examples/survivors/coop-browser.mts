@@ -498,7 +498,7 @@ function connectionAction(action: BendABI.CoopConnection.Action, envelope?: Snap
           prediction = null
           flushClientDelivery()
           transport?.beginDrain(true)
-        }
+        } else flushClientDelivery()
       } catch (error) {
         console.error(error)
         reportFailure(error, "snapshot")
@@ -633,7 +633,7 @@ function flushClientDelivery() {
     .then(() => {
       if (generation === epoch && connection === connectionEpoch) {
         clientDelivery = ClientDelivery.complete(clientDelivery, packet.epoch, packet.id)
-        if (runFinished) flushClientDelivery()
+        flushClientDelivery()
       }
     })
     .catch((error) => {
