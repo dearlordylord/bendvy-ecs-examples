@@ -14,7 +14,7 @@
     "check:typescript": "npm run typecheck && npm run lint && npm run check:format && npm run test:boundaries",
     "test:full-game:manual": "bash examples/survivors/check-full-game-manual.sh",
     "generate:types": "python3 scripts/generate-bend-types.py",
-    "test:boundaries": "node --test scripts/survivors-publication-values.test.mts examples/survivors/coop-entry.test.mts examples/survivors/boundaries.test.mts scripts/source-boundaries.test.mts"
+    "test:boundaries": "node --test scripts/survivors-publication-values.test.mts examples/survivors/coop-entry.test.mts examples/survivors/boundaries.test.mts scripts/source-boundaries.test.mts tools/survivors-bot/coop-browser-trace.test.mts"
   },
   "devDependencies": {
     "@types/node": "25.2.0",
