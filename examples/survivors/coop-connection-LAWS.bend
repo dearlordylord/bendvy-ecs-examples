@@ -141,7 +141,7 @@ law failure_reason_survives_late_events:
 # Why it matters: reload must preserve the prepared game for a later connection.
 law live_loss_suspends:
   for +epoch:U32
-  {C.transition(C.HostRunning{epoch},C.Lost{}) == C.Out{C.Suspended{C.Host{},epoch},C.Suspend{}} : C.Out}
+  {C.transition(C.HostRunning{epoch},C.ConnectionLost{}) == C.Out{C.Suspended{C.Host{},epoch},C.Suspend{}} : C.Out}
 
 # Guarantees: an event from a different local connection epoch leaves the entire handshake unchanged.
 # Why it matters: old async callbacks must not start or close a replacement connection.

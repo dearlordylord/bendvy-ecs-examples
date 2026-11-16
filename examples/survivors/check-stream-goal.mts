@@ -1,7 +1,16 @@
 import assert from "node:assert/strict"
 import { createHash } from "node:crypto"
 import { spawnSync } from "node:child_process"
-import { mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, mkdirSync, writeFileSync } from "node:fs"
+import {
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  mkdirSync,
+  writeFileSync
+} from "node:fs"
 import { homedir, tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
@@ -106,9 +115,12 @@ assert.throws(() => prerequisite({ method: "full-source-cli-check-only", sources
 const root = dirname(fileURLToPath(import.meta.url))
 if (process.versions.bun) throw Error("Run this gate with Node24")
 const workerFlags = ["--no-warnings", "--stack-size=8192", "--experimental-transform-types"]
-const compilerCommit = "a3efe8a3801f423827424227172eed9802c5e6cb"
+const compilerCommit = "624dd9f4607cd29b0871a9b96d413bfb11e92f52"
 const compilerRoot = process.env.BEND_SOURCE_ROOT
-if (process.env.BEND) throw Error("BEND override is forbidden; use the installed pinned CLI")
+const selectedCli = process.env.BEND || "bend"
+const locatedCli = spawnSync("which", [selectedCli], { encoding: "utf8" })
+assert.equal(locatedCli.status, 0, "Pinned Bend CLI must be installed")
+const installedResources = join(dirname(realpathSync(locatedCli.stdout.trim())), "..", "bend2")
 const lawPath = join(root, "offline-policy/preference-LAWS.bend")
 const proofPath = join(root, "offline-policy/preference-PROOF.bend")
 const hash = (text: string) => createHash("sha256").update(text).digest("hex")
@@ -174,7 +186,7 @@ if (process.argv[2] === "--source-manifest") {
   const seen = new Map<string, string | null>()
   await Bend.book_load(book, proofPath, "", seen)
   Bend.book_valid(book)
-  const installedBase = join(homedir(), ".bend/bend2/base.bend")
+  const installedBase = join(installedResources, "base.bend")
   assert.equal(
     readFileSync(Bend.BASE_BEND, "utf8"),
     readFileSync(installedBase, "utf8"),
@@ -202,10 +214,10 @@ if (process.argv[2] === "--kernel-root") {
   assert.equal(attested.method, "full-source-cli-check-only")
   if (process.env.BENDTT) throw Error("BENDTT override is forbidden")
   const cli = process.env.BEND || "bend"
-  assert.equal(spawnSync(cli, ["version"], { encoding: "utf8" }).stdout.trim(), "bend 2.0.39")
+  assert.equal(spawnSync(cli, ["version"], { encoding: "utf8" }).stdout.trim(), "bend 2.0.40")
   const cliPath = spawnSync("which", [cli], { encoding: "utf8" }).stdout.trim()
   assert.equal(createHash("sha256").update(readFileSync(cliPath)).digest("hex"), attested.cliSha256)
-  if (!compilerRoot) throw Error("BEND_SOURCE_ROOT must identify official Bend v2.0.39 sources")
+  if (!compilerRoot) throw Error("BEND_SOURCE_ROOT must identify official Bend v2.0.40 sources")
   const commit = spawnSync("git", ["-C", compilerRoot, "rev-parse", "HEAD"], { encoding: "utf8" })
   assert.equal(commit.status, 0)
   assert.equal(commit.stdout.trim(), compilerCommit)
@@ -220,7 +232,7 @@ if (process.argv[2] === "--kernel-root") {
   const seen = new Map<string, string | null>()
   await Bend.book_load(book, proofPath, "", seen)
   Bend.book_valid(book)
-  const installedBase = join(homedir(), ".bend/bend2/base.bend")
+  const installedBase = join(installedResources, "base.bend")
   assert.equal(
     readFileSync(Bend.BASE_BEND, "utf8"),
     readFileSync(installedBase, "utf8"),
@@ -294,7 +306,7 @@ if (process.argv[2] === "--kernel-root") {
   const artifact = join(dirname(receiptPath), `${law}.bendtt`)
   const outside = Safe.safe_emit(book, artifact)
   assert.deepEqual(outside, [], "Selected root must be inside kernel scope")
-  const kernelSource = readFileSync(join(homedir(), ".bend/bend2/bendtt.lean"), "utf8")
+  const kernelSource = readFileSync(join(installedResources, "bendtt.lean"), "utf8")
   assert.equal(kernelSource, readFileSync(join(compilerRoot, "bend2/bendtt.lean"), "utf8"))
   const kernelKey = hash("4.34.0" + "\0" + kernelSource).slice(0, 16)
   const kernel = join(homedir(), ".bend/bendtt", kernelKey, "bendtt")
@@ -461,7 +473,7 @@ try {
   if (!process.argv.includes("--elaborator-only")) {
     if (!compilerRoot)
       throw Error(
-        "Set BEND_SOURCE_ROOT to the unchanged official v2.0.39 checkout; --elaborator-only does not qualify kernel proofs"
+        "Set BEND_SOURCE_ROOT to the unchanged official v2.0.40 checkout; --elaborator-only does not qualify kernel proofs"
       )
     const laws = [...readFileSync(lawPath, "utf8").matchAll(/^law (\w+):/gm)].map((match) => {
       const name = match[1]
@@ -472,9 +484,9 @@ try {
     assert.equal(new Set(laws).size, 82)
     if (process.env.BENDTT) throw Error("BENDTT override is forbidden")
     const cli = process.env.BEND || "bend"
-    assert.equal(spawnSync(cli, ["version"], { encoding: "utf8" }).stdout.trim(), "bend 2.0.39")
+    assert.equal(spawnSync(cli, ["version"], { encoding: "utf8" }).stdout.trim(), "bend 2.0.40")
     const cliPath = spawnSync("which", [cli], { encoding: "utf8" }).stdout.trim()
-    const kernelSource = readFileSync(join(homedir(), ".bend/bend2/bendtt.lean"), "utf8")
+    const kernelSource = readFileSync(join(installedResources, "bendtt.lean"), "utf8")
     const kernelKey = hash("4.34.0" + "\0" + kernelSource).slice(0, 16)
     const kernelPath = join(homedir(), ".bend/bendtt", kernelKey, "bendtt")
     for (const source of sources)

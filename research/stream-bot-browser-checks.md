@@ -77,13 +77,13 @@ supported public control and verifies bot play preserves the resulting profile.
 
 ## Bend navigation checks
 
-The navigation gate requires Bend 2.0.39, Node.js 24.20 or newer, coreutils
+The navigation gate requires Bend 2.0.40, Node.js 24.20 or newer, coreutils
 `timeout` or `gtimeout`, and the matching compiler source checkout. Prepare that
 checkout separately from the examples:
 
 ```sh
 git clone https://github.com/bendlang/bend.git /tmp/bend-stream-verifier
-git -C /tmp/bend-stream-verifier checkout a3efe8a3801f423827424227172eed9802c5e6cb
+git -C /tmp/bend-stream-verifier checkout 624dd9f4607cd29b0871a9b96d413bfb11e92f52
 BEND_SOURCE_ROOT=/tmp/bend-stream-verifier \
   node --experimental-transform-types --stack-size=8192 \
   examples/survivors/check-stream-goal.mts

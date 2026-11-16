@@ -11,7 +11,7 @@ requires the frozen participant roster to be ready before the worker advances ti
 
 The model also owns retry epochs, frame/version admission, failure reasons and
 which deadlines can fail a handshake. Its control codec cannot decode local
-`Prepared`, `SnapshotSeen`, `Timeout` or `Lost` events from peer bytes. The host
+`Prepared`, `SnapshotSeen`, `Timeout` or `ConnectionLost` events from peer bytes. The host
 browser observes the worker's Bend state so its IO deadline can fail locally
 when a worker cannot respond. Worker crashes are handled without asking that
 failed worker to process its own error. Browser/transport adapters execute the

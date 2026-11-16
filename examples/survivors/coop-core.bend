@@ -23,11 +23,11 @@ import spawn-policy.bend as S
 import pools.bend as PL
 import projectile-pool.bend as SP
 import body-index.bend as BI
-import bendvy-ecs-core@0.1.0.2/world.bend as W
-import bendvy-ecs-core@0.1.0.2/component.bend as C
-import bendvy-ecs-core@0.1.0.2/transaction.bend as T
-import bendvy-ecs-core@0.1.0.2/compose.bend as Q
-import bendvy-ecs-core@0.1.0.2/capabilities.bend as Cap
+import bendvy-ecs-core@0.1.0.6/world.bend as W
+import bendvy-ecs-core@0.1.0.6/component.bend as C
+import bendvy-ecs-core@0.1.0.6/transaction.bend as T
+import bendvy-ecs-core@0.1.0.6/compose.bend as Q
+import bendvy-ecs-core@0.1.0.6/capabilities.bend as Cap
 
 type PlayerRef is Data: PlayerRef{id: U32,handle: W.Handle<Storage.Schema>}
 type PlayerOffers is Data: PlayerOffers{id: U32,offers: List<&2,Model.Offer>}

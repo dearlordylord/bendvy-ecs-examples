@@ -33,13 +33,13 @@ import loot-visual.bend as LV
 import loot-placement.bend as LootPlacement
 import projectile-contact.bend as Contact
 import pickup-policy.bend as PickupPolicy
-import bendvy-ecs-core@0.1.0.2/world.bend as W
-import bendvy-ecs-core@0.1.0.2/column.bend as Col
-import bendvy-ecs-core@0.1.0.2/component.bend as C
-import bendvy-ecs-core@0.1.0.2/commands.bend as Cmd
-import bendvy-ecs-core@0.1.0.2/transaction.bend as T
-import bendvy-ecs-core@0.1.0.2/compose.bend as Q
-import bendvy-ecs-core@0.1.0.2/owned_compose.bend as OwnedQ
+import bendvy-ecs-core@0.1.0.6/world.bend as W
+import bendvy-ecs-core@0.1.0.6/column.bend as Col
+import bendvy-ecs-core@0.1.0.6/component.bend as C
+import bendvy-ecs-core@0.1.0.6/commands.bend as Cmd
+import bendvy-ecs-core@0.1.0.6/transaction.bend as T
+import bendvy-ecs-core@0.1.0.6/compose.bend as Q
+import bendvy-ecs-core@0.1.0.6/owned_compose.bend as OwnedQ
 
 # Frame kinds: enemy0, player shot1, XP2, gold3, heal4, chest5, hostile shot7.
 # Dormant8 never renders. Health and XP payload fields are presentation views;

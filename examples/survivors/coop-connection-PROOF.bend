@@ -178,7 +178,7 @@ def L.failure_reason_survives_late_events(role,epoch,reason,event):
     case C.ReadyAck{_,_}: {==}
     case C.Started{_}: {==}
     case C.Timeout{}: {==}
-    case C.Lost{}: {==}
+    case C.ConnectionLost{}: {==}
     case C.Reject{_}: {==}
 
 
@@ -255,7 +255,7 @@ def L.start_has_only_one_cause(state,event):
     case C.Idle{role,epoch} C.ReadyAck{token,received}: {==}
     case C.Idle{role,epoch} C.Started{token}: {==}
     case C.Idle{role,epoch} C.Timeout{}: {==}
-    case C.Idle{role,epoch} C.Lost{}: {==}
+    case C.Idle{role,epoch} C.ConnectionLost{}: {==}
     case C.Idle{role,epoch} C.Reject{why}: {==}
     case C.HostHello{epoch} C.Hello{version,token}: {==}
     case C.HostHello{epoch} C.Frame{version,token,received}: {==}
@@ -266,7 +266,7 @@ def L.start_has_only_one_cause(state,event):
     case C.HostHello{epoch} C.ReadyAck{token,received}: {==}
     case C.HostHello{epoch} C.Started{token}: {==}
     case C.HostHello{epoch} C.Timeout{}: {==}
-    case C.HostHello{epoch} C.Lost{}: {==}
+    case C.HostHello{epoch} C.ConnectionLost{}: {==}
     case C.HostHello{epoch} C.Reject{why}: {==}
     case C.HostSetup{epoch} C.Hello{version,token}: {==}
     case C.HostSetup{epoch} C.Frame{version,token,received}: {==}
@@ -277,7 +277,7 @@ def L.start_has_only_one_cause(state,event):
     case C.HostSetup{epoch} C.ReadyAck{token,received}: {==}
     case C.HostSetup{epoch} C.Started{token}: {==}
     case C.HostSetup{epoch} C.Timeout{}: {==}
-    case C.HostSetup{epoch} C.Lost{}: {==}
+    case C.HostSetup{epoch} C.ConnectionLost{}: {==}
     case C.HostSetup{epoch} C.Reject{why}: {==}
     case C.HostPreparing{epoch} C.Hello{version,token}: {==}
     case C.HostPreparing{epoch} C.Frame{version,token,received}: {==}
@@ -288,7 +288,7 @@ def L.start_has_only_one_cause(state,event):
     case C.HostPreparing{epoch} C.ReadyAck{token,received}: {==}
     case C.HostPreparing{epoch} C.Started{token}: {==}
     case C.HostPreparing{epoch} C.Timeout{}: {==}
-    case C.HostPreparing{epoch} C.Lost{}: {==}
+    case C.HostPreparing{epoch} C.ConnectionLost{}: {==}
     case C.HostPreparing{epoch} C.Reject{why}: {==}
     case C.HostReady{epoch,observation} C.Hello{version,token}: {==}
     case C.HostReady{epoch,observation} C.Frame{version,token,received}: {==}
@@ -299,7 +299,7 @@ def L.start_has_only_one_cause(state,event):
     case C.HostReady{epoch,observation} C.ReadyAck{token,received}: ready_start(Bool.and(U32.is_eq(token,epoch),U32.is_eq(received,observation)),epoch,observation)
     case C.HostReady{epoch,observation} C.Started{token}: {==}
     case C.HostReady{epoch,observation} C.Timeout{}: {==}
-    case C.HostReady{epoch,observation} C.Lost{}: {==}
+    case C.HostReady{epoch,observation} C.ConnectionLost{}: {==}
     case C.HostReady{epoch,observation} C.Reject{why}: {==}
     case C.HostRunning{epoch} C.Hello{version,token}: {==}
     case C.HostRunning{epoch} C.Frame{version,token,received}: {==}
@@ -310,7 +310,7 @@ def L.start_has_only_one_cause(state,event):
     case C.HostRunning{epoch} C.ReadyAck{token,received}: {==}
     case C.HostRunning{epoch} C.Started{token}: {==}
     case C.HostRunning{epoch} C.Timeout{}: {==}
-    case C.HostRunning{epoch} C.Lost{}: {==}
+    case C.HostRunning{epoch} C.ConnectionLost{}: {==}
     case C.HostRunning{epoch} C.Reject{why}: {==}
     case C.GuestHello{epoch} C.Hello{version,token}: guest_hello_no_start(U32.is_eq(version,1),epoch,token)
     case C.GuestHello{epoch} C.Frame{version,token,received}: early_frame_no_start(U32.is_eq(version,1),C.GuestHello{epoch})
@@ -321,7 +321,7 @@ def L.start_has_only_one_cause(state,event):
     case C.GuestHello{epoch} C.ReadyAck{token,received}: {==}
     case C.GuestHello{epoch} C.Started{token}: {==}
     case C.GuestHello{epoch} C.Timeout{}: {==}
-    case C.GuestHello{epoch} C.Lost{}: {==}
+    case C.GuestHello{epoch} C.ConnectionLost{}: {==}
     case C.GuestHello{epoch} C.Reject{why}: {==}
     case C.GuestSnapshot{epoch,expected} C.Hello{version,token}: {==}
     case C.GuestSnapshot{epoch,expected} C.Frame{version,token,received}: frame_version_no_start(U32.is_eq(version,1),C.GuestSnapshot{epoch,expected},expected,token,received)
@@ -332,7 +332,7 @@ def L.start_has_only_one_cause(state,event):
     case C.GuestSnapshot{epoch,expected} C.ReadyAck{token,received}: {==}
     case C.GuestSnapshot{epoch,expected} C.Started{token}: {==}
     case C.GuestSnapshot{epoch,expected} C.Timeout{}: {==}
-    case C.GuestSnapshot{epoch,expected} C.Lost{}: {==}
+    case C.GuestSnapshot{epoch,expected} C.ConnectionLost{}: {==}
     case C.GuestSnapshot{epoch,expected} C.Reject{why}: {==}
     case C.GuestStart{epoch,expected,observation} C.Hello{version,token}: {==}
     case C.GuestStart{epoch,expected,observation} C.Frame{version,token,received}: frame_version_no_start(U32.is_eq(version,1),C.GuestStart{epoch,expected,observation},expected,token,received)
@@ -343,7 +343,7 @@ def L.start_has_only_one_cause(state,event):
     case C.GuestStart{epoch,expected,observation} C.ReadyAck{token,received}: {==}
     case C.GuestStart{epoch,expected,observation} C.Started{token}: started_no_start(U32.is_eq(token,expected),epoch,expected,observation)
     case C.GuestStart{epoch,expected,observation} C.Timeout{}: {==}
-    case C.GuestStart{epoch,expected,observation} C.Lost{}: {==}
+    case C.GuestStart{epoch,expected,observation} C.ConnectionLost{}: {==}
     case C.GuestStart{epoch,expected,observation} C.Reject{why}: {==}
     case C.GuestRunning{epoch,expected} C.Hello{version,token}: {==}
     case C.GuestRunning{epoch,expected} C.Frame{version,token,received}: frame_version_no_start(U32.is_eq(version,1),C.GuestRunning{epoch,expected},expected,token,received)
@@ -354,7 +354,7 @@ def L.start_has_only_one_cause(state,event):
     case C.GuestRunning{epoch,expected} C.ReadyAck{token,received}: {==}
     case C.GuestRunning{epoch,expected} C.Started{token}: {==}
     case C.GuestRunning{epoch,expected} C.Timeout{}: {==}
-    case C.GuestRunning{epoch,expected} C.Lost{}: {==}
+    case C.GuestRunning{epoch,expected} C.ConnectionLost{}: {==}
     case C.GuestRunning{epoch,expected} C.Reject{why}: {==}
     case C.Suspended{role,epoch} C.Hello{version,token}: {==}
     case C.Suspended{role,epoch} C.Frame{version,token,received}: {==}
@@ -365,7 +365,7 @@ def L.start_has_only_one_cause(state,event):
     case C.Suspended{role,epoch} C.ReadyAck{token,received}: {==}
     case C.Suspended{role,epoch} C.Started{token}: {==}
     case C.Suspended{role,epoch} C.Timeout{}: {==}
-    case C.Suspended{role,epoch} C.Lost{}: {==}
+    case C.Suspended{role,epoch} C.ConnectionLost{}: {==}
     case C.Suspended{role,epoch} C.Reject{why}: {==}
     case C.Failed{role,epoch,reason} C.Hello{version,token}: {==}
     case C.Failed{role,epoch,reason} C.Frame{version,token,received}: {==}
@@ -376,7 +376,7 @@ def L.start_has_only_one_cause(state,event):
     case C.Failed{role,epoch,reason} C.ReadyAck{token,received}: {==}
     case C.Failed{role,epoch,reason} C.Started{token}: {==}
     case C.Failed{role,epoch,reason} C.Timeout{}: {==}
-    case C.Failed{role,epoch,reason} C.Lost{}: {==}
+    case C.Failed{role,epoch,reason} C.ConnectionLost{}: {==}
     case C.Failed{role,epoch,reason} C.Reject{why}: {==}
 
 def L.running_entry_has_only_confirmed_causes(state,event):
@@ -390,7 +390,7 @@ def L.running_entry_has_only_confirmed_causes(state,event):
     case C.Idle{role,epoch} C.ReadyAck{token,received}: {==}
     case C.Idle{role,epoch} C.Started{token}: {==}
     case C.Idle{role,epoch} C.Timeout{}: {==}
-    case C.Idle{role,epoch} C.Lost{}: {==}
+    case C.Idle{role,epoch} C.ConnectionLost{}: {==}
     case C.Idle{role,epoch} C.Reject{why}: {==}
     case C.HostHello{epoch} C.Hello{version,token}: {==}
     case C.HostHello{epoch} C.Frame{version,token,received}: {==}
@@ -401,7 +401,7 @@ def L.running_entry_has_only_confirmed_causes(state,event):
     case C.HostHello{epoch} C.ReadyAck{token,received}: {==}
     case C.HostHello{epoch} C.Started{token}: {==}
     case C.HostHello{epoch} C.Timeout{}: {==}
-    case C.HostHello{epoch} C.Lost{}: {==}
+    case C.HostHello{epoch} C.ConnectionLost{}: {==}
     case C.HostHello{epoch} C.Reject{why}: {==}
     case C.HostSetup{epoch} C.Hello{version,token}: {==}
     case C.HostSetup{epoch} C.Frame{version,token,received}: {==}
@@ -412,7 +412,7 @@ def L.running_entry_has_only_confirmed_causes(state,event):
     case C.HostSetup{epoch} C.ReadyAck{token,received}: {==}
     case C.HostSetup{epoch} C.Started{token}: {==}
     case C.HostSetup{epoch} C.Timeout{}: {==}
-    case C.HostSetup{epoch} C.Lost{}: {==}
+    case C.HostSetup{epoch} C.ConnectionLost{}: {==}
     case C.HostSetup{epoch} C.Reject{why}: {==}
     case C.HostPreparing{epoch} C.Hello{version,token}: {==}
     case C.HostPreparing{epoch} C.Frame{version,token,received}: {==}
@@ -423,7 +423,7 @@ def L.running_entry_has_only_confirmed_causes(state,event):
     case C.HostPreparing{epoch} C.ReadyAck{token,received}: {==}
     case C.HostPreparing{epoch} C.Started{token}: {==}
     case C.HostPreparing{epoch} C.Timeout{}: {==}
-    case C.HostPreparing{epoch} C.Lost{}: {==}
+    case C.HostPreparing{epoch} C.ConnectionLost{}: {==}
     case C.HostPreparing{epoch} C.Reject{why}: {==}
     case C.HostReady{epoch,observation} C.Hello{version,token}: {==}
     case C.HostReady{epoch,observation} C.Frame{version,token,received}: {==}
@@ -434,7 +434,7 @@ def L.running_entry_has_only_confirmed_causes(state,event):
     case C.HostReady{epoch,observation} C.ReadyAck{token,received}: ready_entry(Bool.and(U32.is_eq(token,epoch),U32.is_eq(received,observation)),epoch,observation)
     case C.HostReady{epoch,observation} C.Started{token}: {==}
     case C.HostReady{epoch,observation} C.Timeout{}: {==}
-    case C.HostReady{epoch,observation} C.Lost{}: {==}
+    case C.HostReady{epoch,observation} C.ConnectionLost{}: {==}
     case C.HostReady{epoch,observation} C.Reject{why}: {==}
     case C.HostRunning{epoch} C.Hello{version,token}: {==}
     case C.HostRunning{epoch} C.Frame{version,token,received}: {==}
@@ -445,7 +445,7 @@ def L.running_entry_has_only_confirmed_causes(state,event):
     case C.HostRunning{epoch} C.ReadyAck{token,received}: {==}
     case C.HostRunning{epoch} C.Started{token}: {==}
     case C.HostRunning{epoch} C.Timeout{}: {==}
-    case C.HostRunning{epoch} C.Lost{}: {==}
+    case C.HostRunning{epoch} C.ConnectionLost{}: {==}
     case C.HostRunning{epoch} C.Reject{why}: {==}
     case C.GuestHello{epoch} C.Hello{version,token}: guest_hello_not_running(U32.is_eq(version,1),epoch,token)
     case C.GuestHello{epoch} C.Frame{version,token,received}: early_frame_not_running(U32.is_eq(version,1),C.GuestHello{epoch})
@@ -456,7 +456,7 @@ def L.running_entry_has_only_confirmed_causes(state,event):
     case C.GuestHello{epoch} C.ReadyAck{token,received}: {==}
     case C.GuestHello{epoch} C.Started{token}: {==}
     case C.GuestHello{epoch} C.Timeout{}: {==}
-    case C.GuestHello{epoch} C.Lost{}: {==}
+    case C.GuestHello{epoch} C.ConnectionLost{}: {==}
     case C.GuestHello{epoch} C.Reject{why}: {==}
     case C.GuestSnapshot{epoch,expected} C.Hello{version,token}: {==}
     case C.GuestSnapshot{epoch,expected} C.Frame{version,token,received}: frame_version_not_running(U32.is_eq(version,1),C.GuestSnapshot{epoch,expected},expected,token,received,{==})
@@ -467,7 +467,7 @@ def L.running_entry_has_only_confirmed_causes(state,event):
     case C.GuestSnapshot{epoch,expected} C.ReadyAck{token,received}: {==}
     case C.GuestSnapshot{epoch,expected} C.Started{token}: {==}
     case C.GuestSnapshot{epoch,expected} C.Timeout{}: {==}
-    case C.GuestSnapshot{epoch,expected} C.Lost{}: {==}
+    case C.GuestSnapshot{epoch,expected} C.ConnectionLost{}: {==}
     case C.GuestSnapshot{epoch,expected} C.Reject{why}: {==}
     case C.GuestStart{epoch,expected,observation} C.Hello{version,token}: {==}
     case C.GuestStart{epoch,expected,observation} C.Frame{version,token,received}: frame_version_not_running(U32.is_eq(version,1),C.GuestStart{epoch,expected,observation},expected,token,received,{==})
@@ -478,7 +478,7 @@ def L.running_entry_has_only_confirmed_causes(state,event):
     case C.GuestStart{epoch,expected,observation} C.ReadyAck{token,received}: {==}
     case C.GuestStart{epoch,expected,observation} C.Started{token}: started_entry(U32.is_eq(token,expected),epoch,expected,observation)
     case C.GuestStart{epoch,expected,observation} C.Timeout{}: {==}
-    case C.GuestStart{epoch,expected,observation} C.Lost{}: {==}
+    case C.GuestStart{epoch,expected,observation} C.ConnectionLost{}: {==}
     case C.GuestStart{epoch,expected,observation} C.Reject{why}: {==}
     case C.GuestRunning{epoch,expected} C.Hello{version,token}: {==}
     case C.GuestRunning{epoch,expected} C.Frame{version,token,received}: {==}
@@ -489,7 +489,7 @@ def L.running_entry_has_only_confirmed_causes(state,event):
     case C.GuestRunning{epoch,expected} C.ReadyAck{token,received}: {==}
     case C.GuestRunning{epoch,expected} C.Started{token}: {==}
     case C.GuestRunning{epoch,expected} C.Timeout{}: {==}
-    case C.GuestRunning{epoch,expected} C.Lost{}: {==}
+    case C.GuestRunning{epoch,expected} C.ConnectionLost{}: {==}
     case C.GuestRunning{epoch,expected} C.Reject{why}: {==}
     case C.Suspended{role,epoch} C.Hello{version,token}: {==}
     case C.Suspended{role,epoch} C.Frame{version,token,received}: {==}
@@ -500,7 +500,7 @@ def L.running_entry_has_only_confirmed_causes(state,event):
     case C.Suspended{role,epoch} C.ReadyAck{token,received}: {==}
     case C.Suspended{role,epoch} C.Started{token}: {==}
     case C.Suspended{role,epoch} C.Timeout{}: {==}
-    case C.Suspended{role,epoch} C.Lost{}: {==}
+    case C.Suspended{role,epoch} C.ConnectionLost{}: {==}
     case C.Suspended{role,epoch} C.Reject{why}: {==}
     case C.Failed{role,epoch,reason} C.Hello{version,token}: {==}
     case C.Failed{role,epoch,reason} C.Frame{version,token,received}: {==}
@@ -511,7 +511,7 @@ def L.running_entry_has_only_confirmed_causes(state,event):
     case C.Failed{role,epoch,reason} C.ReadyAck{token,received}: {==}
     case C.Failed{role,epoch,reason} C.Started{token}: {==}
     case C.Failed{role,epoch,reason} C.Timeout{}: {==}
-    case C.Failed{role,epoch,reason} C.Lost{}: {==}
+    case C.Failed{role,epoch,reason} C.ConnectionLost{}: {==}
     case C.Failed{role,epoch,reason} C.Reject{why}: {==}
 
 def L.epoch_projection_exact(state):

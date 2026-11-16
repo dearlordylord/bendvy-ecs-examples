@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "bendVersion": "2.0.39",
+  "bendVersion": "2.0.40",
   "registry": "https://hub.bend-lang.com",
   "packages": {
     "bendvy-ecs-core@0.1.0.1": {
@@ -10,6 +10,14 @@
     "bendvy-ecs-core@0.1.0.2": {
       "contentHash": "0xb2b0f04555daca474f0f77d0966945c9",
       "manifestSha256": "b2b0f04555daca474f0f77d0966945c972904472ad9ebb634d169584f07f1b3a"
+    },
+    "bendvy-ecs-core@0.1.0.5": {
+      "contentHash": "0x2a0aaf4f2cb3f416a9b91fd887916a5d",
+      "manifestSha256": "2a0aaf4f2cb3f416a9b91fd887916a5d2ef08cf59cb38805c2192091b5ca4899"
+    },
+    "bendvy-ecs-core@0.1.0.6": {
+      "contentHash": "0x14a72e1c180a5ab1f8a056d43822425c",
+      "manifestSha256": "14a72e1c180a5ab1f8a056d43822425c515d763acc1135cb50b78df9f0dc32b2"
     }
   }
 }

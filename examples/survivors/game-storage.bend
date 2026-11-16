@@ -4,9 +4,9 @@ import enemy-combat.bend as Enemy
 import game-components.bend as Components
 import enemy-spatial.bend as Space
 import entity-role.bend as Role
-import bendvy-ecs-core@0.1.0.2/world.bend as W
-import bendvy-ecs-core@0.1.0.2/column.bend as Col
-import bendvy-ecs-core@0.1.0.2/component.bend as C
+import bendvy-ecs-core@0.1.0.6/world.bend as W
+import bendvy-ecs-core@0.1.0.6/column.bend as Col
+import bendvy-ecs-core@0.1.0.6/component.bend as C
 
 # Application-owned schema adapter: columns, family/rest wiring and ownership.
 # Systems, query plans and access contracts remain beside behavior in game.

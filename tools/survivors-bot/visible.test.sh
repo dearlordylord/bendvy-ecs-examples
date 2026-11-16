@@ -11,7 +11,7 @@ cp "$repo/toolchains/clang.env" "$fixture/repo/toolchains/clang.env"
 cat > "$fixture/compiler" <<'COMPILER'
 #!/usr/bin/env bash
 set -euo pipefail
-if [[ ${1:-} == version ]]; then echo 'bend 2.0.39'; exit 0; fi
+if [[ ${1:-} == version ]]; then echo 'bend 2.0.40'; exit 0; fi
 [[ $CC == "$FIXTURE/repo/tools/clang" ]]
 [[ $1 == "$FIXTURE/repo/examples/survivors/native-bot.bend" && $2 == -o ]]
 [[ ${FAIL_BUILD:-0} == 0 ]] || exit 42

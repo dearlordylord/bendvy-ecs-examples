@@ -9,18 +9,18 @@ import projectile-state.bend as Shot
 import game-storage.bend as Storage
 import enemy-spatial.bend as Space
 import entity-role.bend as GRole
-import bendvy-ecs-core@0.1.0.2/world.bend as W
-import bendvy-ecs-core@0.1.0.2/column.bend as Col
-import bendvy-ecs-core@0.1.0.2/lifecycle.bend as L
-import bendvy-ecs-core@0.1.0.2/change_tick.bend as Tick
-import bendvy-ecs-core@0.1.0.2/clock_state.bend as Clock
-import bendvy-ecs-core@0.1.0.2/entity_allocator.bend as A
-import bendvy-ecs-core@0.1.0.2/entity_key.bend as K
+import bendvy-ecs-core@0.1.0.6/world.bend as W
+import bendvy-ecs-core@0.1.0.6/column.bend as Col
+import bendvy-ecs-core@0.1.0.6/lifecycle.bend as L
+import bendvy-ecs-core@0.1.0.6/change_tick.bend as Tick
+import bendvy-ecs-core@0.1.0.6/clock_state.bend as Clock
+import bendvy-ecs-core@0.1.0.6/entity_allocator.bend as A
+import bendvy-ecs-core@0.1.0.6/entity_key.bend as K
 
 import coop-core.bend as Core
 import offline-policy.bend as Policy
-import bendvy-ecs-core@0.1.0.2/indexed_lifecycle.bend as M
-import bendvy-ecs-core@0.1.0.2/owner_handoff.bend as H
+import bendvy-ecs-core@0.1.0.6/indexed_lifecycle.bend as M
+import bendvy-ecs-core@0.1.0.6/owner_handoff.bend as H
 
 def fbits(value: F32) -> String: U32.show(F32.bits(value))
 def join(rows: List<&2,String>) -> String:

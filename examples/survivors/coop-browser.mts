@@ -822,7 +822,7 @@ async function connect(
           transport?.close()
           return
         }
-        signalConnection({ $: "Lost" })
+        signalConnection({ $: "ConnectionLost" })
       } else if (event.type === "timeout") {
         if (event.kind === "drain") transport?.close()
         else signalConnection({ $: "Timeout" })

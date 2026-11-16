@@ -18,14 +18,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-      - name: Install Bend 2.0.39
+      - name: Install Bend 2.0.40
         shell: bash
         run: |
-          archive="$RUNNER_TEMP/bend-2.0.39-linux-x64.tar.gz"
+          archive="$RUNNER_TEMP/bend-2.0.40-linux-x64.tar.gz"
           curl --proto '=https' --tlsv1.2 -fsSL --retry 3 \
-            https://github.com/bendlang/bend/releases/download/v2.0.39/bend-2.0.39-linux-x64.tar.gz \
+            https://github.com/bendlang/bend/releases/download/v2.0.40/bend-2.0.40-linux-x64.tar.gz \
             -o "$archive"
-          echo "6cf462fd8f70b094a4950ebb709a9c4ffd8f1d1189d9cedf1fd63cd5d041c7ab  $archive" | sha256sum -c -
+          echo "c9ff8d67bd903fb6ad9a26b43d8a62c01021de82a44d55ce4a3dcd4732113d6b  $archive" | sha256sum -c -
           tar -xzf "$archive" -C "$RUNNER_TEMP"
           echo "BEND=$RUNNER_TEMP/bend/bin/bend" >> "$GITHUB_ENV"
           echo "BEND_LIB=$RUNNER_TEMP/bendhub" >> "$GITHUB_ENV"
@@ -69,14 +69,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24.20.0'
-      - name: Install Bend 2.0.39
+      - name: Install Bend 2.0.40
         shell: bash
         run: |
-          archive="$RUNNER_TEMP/bend-2.0.39-linux-x64.tar.gz"
+          archive="$RUNNER_TEMP/bend-2.0.40-linux-x64.tar.gz"
           curl --proto '=https' --tlsv1.2 -fsSL --retry 3 \
-            https://github.com/bendlang/bend/releases/download/v2.0.39/bend-2.0.39-linux-x64.tar.gz \
+            https://github.com/bendlang/bend/releases/download/v2.0.40/bend-2.0.40-linux-x64.tar.gz \
             -o "$archive"
-          echo "6cf462fd8f70b094a4950ebb709a9c4ffd8f1d1189d9cedf1fd63cd5d041c7ab  $archive" | sha256sum -c -
+          echo "c9ff8d67bd903fb6ad9a26b43d8a62c01021de82a44d55ce4a3dcd4732113d6b  $archive" | sha256sum -c -
           tar -xzf "$archive" -C "$RUNNER_TEMP"
           echo "BEND=$RUNNER_TEMP/bend/bin/bend" >> "$GITHUB_ENV"
           echo "BEND_LIB=$RUNNER_TEMP/bendhub" >> "$GITHUB_ENV"

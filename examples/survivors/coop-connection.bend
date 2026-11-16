@@ -36,7 +36,7 @@ type Signal is Data:
   ReadyAck{token:U32,observation:U32}
   Started{token:U32}
   Timeout{}
-  Lost{}
+  ConnectionLost{}
   Reject{reason:Reason}
 type Action is Data:
   Nothing{}
@@ -161,7 +161,7 @@ def early_frame(compatible:Bool,state:State) -> Out:
 def transition(+state:State,event:Signal) -> Out:
   match state event:
     case Failed{role,epoch,reason} _: unchanged(Failed{role,epoch,reason})
-    case state Lost{}: Out{Suspended{role(state),epoch(state)},Suspend{}}
+    case state ConnectionLost{}: Out{Suspended{role(state),epoch(state)},Suspend{}}
     case state Reject{reason}: failed(state,reason)
     case state Timeout{}: timeout_selected(waiting(state),state)
     case GuestHello{epoch} Hello{version,token}: guest_hello_selected(U32.is_eq(version,protocol_version()),epoch,token)

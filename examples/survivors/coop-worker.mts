@@ -425,7 +425,7 @@ onmessage = (event: MessageEvent<WorkerRequest>) => {
         peer.epoch = message.connectionEpoch
         lobby = Lobby.pause(lobby)
         for (const member of peers.values()) member.queue = InputQueue.fresh(Lobby.input_epoch(lobby), currentWorldTick)
-        handshake(peer, { $: "Lost" })
+        handshake(peer, { $: "ConnectionLost" })
         peer.queue = InputQueue.fresh(Lobby.input_epoch(lobby), currentWorldTick)
         peer.eligible = false
         peer.session = Session.disconnect(1, peer.session)
